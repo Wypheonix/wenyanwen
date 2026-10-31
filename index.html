@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>选择题刷题系统</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: "PingFang SC", "SimHei", sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            max-width: 720px;
+            margin: 40px auto;
+            padding: 0 20px;
+            font-size: 18px;
+            line-height: 1.7;
+            background-color: #f4f7fa;
+        }
+        .box {
+            background: #ffffff;
+            padding: 28px;
+            border-radius: 14px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+        }
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 24px;
+            text-align: center;
+            color: #222;
+        }
+        .q-text {
+            margin-bottom: 22px;
+            font-size: 19px;
+        }
+        .option-item {
+            margin: 12px 0;
+            cursor: pointer;
+        }
+        input[type="radio"] {
+            margin-right: 10px;
+            transform: scale(1.15);
+        }
+        .tip {
+            margin: 20px 0;
+            font-weight: bold;
+            font-size: 20px;
+        }
+        .right {
+            color: #009944;
+        }
+        .wrong {
+            color: #dd2222;
+        }
+        .opt-green {
+            color: #009944;
+            font-weight:bold;
+        }
+        .opt-red {
+            color: #dd2222;
+            font-weight:bold;
+        }
+        .next-btn {
+            padding: 11px 24px;
+            border: none;
+            border-radius: 7px;
+            background: #2b78e4;
+            color: #fff;
+            font-size: 17px;
+            cursor: pointer;
+            display: none;
+        }
+        .next-btn:hover {
+            background: #1f62c2;
+        }
+        .stat-box {
+            margin-top: 22px;
+            padding: 18px;
+            background: #f6f8fa;
+            border-radius: 9px;
+            display: none;
+        }
+        #statText {
+            white-space: pre-line;
+            margin-bottom:16px;
+        }
+        .export-btn {
+            padding: 11px 24px;
+            border: none;
+            border-radius: 7px;
+            background: #2b78e4;
+            color: #fff;
+            font-size: 17px;
+            cursor: pointer;
+        }
+        .export-btn:hover {
+            background: #1f62c2;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <div class="title">《短歌行》字词刷题</div>
+        <div id="qBox">
+            <div class="q-text" id="qText"></div>
+            <div id="optWrap"></div>
+            <div class="tip" id="tip"></div>
+            <button class="next-btn" id="nextBtn">下一题</button>
+        </div>
+        <div class="stat-box" id="statBox">
+            <div id="statText"></div>
+            <button class="export-btn" id="exportWrongBtn">下载错题库</button>
+        </div>
+    </div>
+
+<script>
+// =========题目区，已经填好你的15道题=========
+const questionList = [
+    {
+        q: "“对酒当歌，人生几何”中“当”的意思是",
+        A: "应当",
+        B: "对着",
+        C: "掌管",
+        D: "抵挡",
+        ans: "B"
+    },
+    {
+        q: "“人生几何”中“几何”的意思是",
+        A: "多少",
+        B: "若干",
+        ans: "A"
+    },
+    {
+        q: "“去日苦多”中“苦”的意思是",
+        A: "痛苦",
+        B: "使……受苦",
+        C: "可悲的是（苦于）",
+        D: "刻苦",
+        ans: "C"
+    },
+    {
+        q: "“唯有杜康”中“杜康”的意思是",
+        A: "造酒者",
+        B: "酒",
+        ans: "B"
+    },
+    {
+        q: "“青青子衿”中“衿”的意思是",
+        A: "衣领",
+        B: "衣襟",
+        ans: "A"
+    },
+    {
+        q: "“悠悠我心”中“悠悠”的意思是",
+        A: "悠闲自在",
+        B: "长久",
+        C: "众多",
+        D: "遥远",
+        ans: "B"
+    },
+    {
+        q: "“但为君故”中“但”的意思是",
+        A: "尽管",
+        B: "只、仅",
+        C: "徒然",
+        D: "只要",
+        ans: "B"
+    },
+    {
+        q: "“沉吟至今”中“沉吟”的意思是",
+        A: "低声自语",
+        B: "犹豫不决",
+        C: "沉思吟味",
+        ans: "C"
+    },
+    {
+        q: "“鼓瑟吹笙”中“鼓”的意思是",
+        A: "鼓动",
+        B: "鼓胀",
+        C: "击鼓",
+        D: "弹奏",
+        ans: "D"
+    },
+    {
+        q: "“越陌度阡”中“陌”的意思是",
+        A: "陌生",
+        B: "街道",
+        C: "田间东西向小路",
+        ans: "C"
+    },
+    {
+        q: "“枉用相存”中“枉”的意思是",
+        A: "屈尊",
+        B: "冤枉",
+        C: "弯曲",
+        D: "徒然",
+        ans: "A"
+    },
+    {
+        q: "“枉用相存”中“存”的意思是",
+        A: "存在",
+        B: "保存",
+        C: "问候、探望",
+        D: "思念",
+        ans: "C"
+    },
+    {
+        q: "“契阔谈讌”中“契阔”的意思是",
+        A: "勤劳辛苦",
+        B: "久别重逢",
+        C: "长久分别",
+        D: "广阔辽远",
+        ans: "B"
+    },
+    {
+        q: "“绕树三匝”中“匝”的意思是",
+        A: "周、圈",
+        B: "环绕",
+        C: "完满",
+        D: "笼罩",
+        ans: "A"
+    },
+    {
+        q: "“山不厌高”中“厌”的意思是",
+        A: "厌恶",
+        B: "饱足",
+        C: "压制（厌胜）",
+        D: "满足",
+        ans: "D"
+    }
+];
+// =================================
+
+let current = 0;
+let rightCnt = 0;
+let wrongCnt = 0;
+let wrongList = [];
+let isLock = false;
+
+const qText = document.getElementById("qText");
+const optWrap = document.getElementById("optWrap");
+const tip = document.getElementById("tip");
+const nextBtn = document.getElementById("nextBtn");
+const statBox = document.getElementById("statBox");
+const statText = document.getElementById("statText");
+const exportWrongBtn = document.getElementById("exportWrongBtn");
+
+nextBtn.onclick = function(){
+    current++;
+    if(current >= questionList.length){
+        showResult();
+    }else{
+        showQ();
+    }
+}
+
+function showQ() {
+    tip.innerText = "";
+    nextBtn.style.display = "none";
+    isLock = false;
+    const q = questionList[current];
+    qText.innerText = `【Q${current+1}/${questionList.length}】${q.q}`;
+    optWrap.innerHTML = "";
+    // 自动提取当前题目拥有的选项
+    const keys = Object.keys(q).filter(k=>["A","B","C","D"].includes(k));
+    keys.forEach(key=>{
+        const div = document.createElement("div");
+        div.className = "option-item";
+        const idName = "radio_" + key + "_" + current;
+        div.innerHTML = `<input type="radio" name="opt" value="${key}" id="${idName}">
+        <label for="${idName}" data-key="${key}">${key}. ${q[key]}</label>`;
+        const radio = div.querySelector('input');
+        radio.onchange = function(){
+            if(isLock) return;
+            isLock = true;
+            const myAns = this.value;
+            const realAns = q.ans;
+            const allLabels = optWrap.querySelectorAll('label');
+            allLabels.forEach(label=>{
+                const k = label.getAttribute('data-key');
+                if(k === realAns){
+                    label.classList.add('opt-green');
+                }
+                if(k === myAns && myAns !== realAns){
+                    label.classList.add('opt-red');
+                }
+            })
+            if(myAns === realAns){
+                tip.innerText = "✅ 答对啦！";
+                tip.className = "tip right";
+                rightCnt++;
+                setTimeout(()=>{
+                    current++;
+                    if(current >= questionList.length){
+                        showResult();
+                    }else{
+                        showQ();
+                    }
+                },1200)
+            }else{
+                tip.innerText = `❌ 答错了，正确答案：${realAns}`;
+                tip.className = "tip wrong";
+                wrongCnt++;
+                wrongList.push(questionList[current]);
+                nextBtn.style.display = "block";
+            }
+        }
+        optWrap.appendChild(div);
+    })
+}
+
+function showResult(){
+    document.getElementById("qBox").style.display = "none";
+    statBox.style.display = "block";
+    statText.innerText = `答题完成！
+总题数：${questionList.length}
+✅答对：${rightCnt}题
+❌答错：${wrongCnt}题`
+}
+
+exportWrongBtn.onclick = function(){
+    if(wrongList.length === 0){
+        alert("🎉 本次没有错题！");
+        return;
+    }
+    let text = "=====错题库=====\n";
+    wrongList.forEach(item=>{
+        text += `题目：${item.q}\n`;
+        const keys = Object.keys(item).filter(k=>["A","B","C","D"].includes(k));
+        keys.forEach(k=>{
+            text += `${k}:${item[k]}  `;
+        })
+        text += `\n答案：${item.ans}\n\n`
+    })
+    const blob = new Blob([text], {type:"text/plain;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "短歌行_错题库.txt";
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+showQ();
+</script>
+</body>
+</html>
+<!-- （注：内容由AI生成） -->

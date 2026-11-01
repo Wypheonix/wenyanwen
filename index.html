@@ -40,6 +40,11 @@
             50%{transform:scale(1.03);}
             100%{transform:scale(1);}
         }
+        @keyframes float{
+            0%{transform: translateY(0px);}
+            50%{transform: translateY(-6px);}
+            100%{transform: translateY(0px);}
+        }
 
         .title{
             font-size:28px;
@@ -162,6 +167,56 @@
             font-size:20px;
             margin:20px 0;
         }
+        /* 返回目录按钮 */
+        .back-catalog-btn{
+            padding:8px 14px;
+            border:none;
+            border-radius:6px;
+            background:#887460;
+            color:#fff;
+            font-size:15px;
+            cursor:pointer;
+            font-family: "KaiTi",serif;
+            transition:0.25s;
+        }
+        .back-catalog-btn:hover{
+            background:#6d5b4a;
+        }
+        /* 结束页美化样式 */
+        .end-wrap{
+            background:#fffbf2;
+            padding:36px 24px;
+            border-radius:16px;
+            border:1px solid #e2d4bc;
+            box-shadow:0 3px 16px rgba(70,45,20,0.14);
+            text-align:center;
+            animation:fadeIn 0.5s ease;
+        }
+        .end-title{
+            font-size:32px;
+            color:#5c2c18;
+            letter-spacing:4px;
+            margin-bottom:24px;
+            animation:float 3s ease-in-out infinite;
+        }
+        .end-stat-row{
+            font-size:20px;
+            margin:14px 0;
+            line-height:1.8;
+        }
+        .ok-text{
+            color:#207528;
+            font-weight:bold;
+        }
+        .err-text{
+            color:#a82828;
+            font-weight:bold;
+        }
+        .end-desc{
+            margin:20px 0 28px;
+            font-size:17px;
+            color:#554433;
+        }
     </style>
 </head>
 <body>
@@ -176,6 +231,7 @@
     </div>
     <!-- 答题页 -->
     <div id="page-quiz" class="page">
+        <button class="back-catalog-btn" onclick="backMenu()">← 返回目录</button>
         <div class="title" id="quiz-title"></div>
         <div class="q-box">
             <div class="q-text" id="q-text"></div>
@@ -185,13 +241,20 @@
             <div id="btn-wrap"></div>
         </div>
     </div>
-    <!-- 结束页 -->
+    <!-- 结束页（美化版） -->
     <div id="page-end" class="page">
-        <h1 class="title">本课完成</h1>
-        <div class="stat">答对：<span id="ok">0</span> 题，答错：<span id="err">0</span> 题</div>
-        <button class="btn" onclick="backMenu()">返回目录</button>
-        <button class="btn" id="nextLessonBtn" onclick="nextLesson()">继续下一课</button>
-        <button class="btn" onclick="downloadWrong()">下载错题库</button>
+        <div class="end-wrap">
+            <div class="end-title">本课完成</div>
+            <div class="end-desc">勤学笃思，积微成著</div>
+            <div class="end-stat-row">答对：<span class="ok-text" id="ok">0</span> 题</div>
+            <div class="end-stat-row">答错：<span class="err-text" id="err">0</span> 题</div>
+            <div class="end-stat-row">正确率：<span id="rate">0%</span></div>
+            <div style="margin-top:30px;">
+                <button class="btn" onclick="backMenu()">返回目录</button>
+                <button class="btn" id="nextLessonBtn" onclick="nextLesson()">继续下一课</button>
+                <button class="btn" onclick="downloadWrong()">下载错题库</button>
+            </div>
+        </div>
     </div>
 <script>
 const bank = {
@@ -375,7 +438,7 @@ function showQ(){
             document.getElementById("tip").innerText = `❌ 答错了，正确答案：${letter[item.ans]}`;
         }
         // 展示解析
-        document.getElementById("parse-wrap").innerHTML = `<div class="parse-block"><div class="parse-title">📖解析：</div>${item.parse}</div>`;
+        document.getElementById("parse-wrap").innerHTML = `<div class="parse-block"><div class="parse-title">解析：</div>${item.parse}</div>`;
     }
 
     renderBtnBar();
@@ -433,7 +496,7 @@ function selectAns(i){
     const opts = document.querySelectorAll(".opt-item");
     //渲染解析
     const parseWrap = document.getElementById("parse-wrap");
-    parseWrap.innerHTML = `<div class="parse-block"><div class="parse-title">📖解析：</div>${item.parse}</div>`;
+    parseWrap.innerHTML = `<div class="parse-block"><div class="parse-title">解析：</div>${item.parse}</div>`;
 
     if(i === item.ans){
         okCnt++;
@@ -464,6 +527,9 @@ function endPage(){
     clearTimeout(autoTimer);
     document.getElementById("ok").innerText = okCnt;
     document.getElementById("err").innerText = errCnt;
+    const total = okCnt + errCnt;
+    const rate = total === 0 ? "0%" : Math.round(okCnt / total * 100) + "%";
+    document.getElementById("rate").innerText = rate;
     const idx = order.indexOf(curKey);
     const hasNext = idx+1 < order.length;
     document.getElementById("nextLessonBtn").style.display = hasNext ? "inline-block" : "none";

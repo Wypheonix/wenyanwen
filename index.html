@@ -3,348 +3,492 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>选择题刷题系统</title>
+    <title>高中文言文实词自测｜古风版</title>
     <style>
         * {
             box-sizing: border-box;
-            font-family: "PingFang SC", "SimHei", sans-serif;
             margin: 0;
             padding: 0;
         }
         body {
-            max-width: 720px;
-            margin: 40px auto;
-            padding: 0 20px;
-            font-size: 18px;
-            line-height: 1.7;
-            background-color: #f4f7fa;
+            /*宣纸底色 + 古风回纹暗花背景*/
+            background-color: #f8f3e6;
+            background-image:
+                url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c9b89c' fill-opacity='0.08'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"),
+                url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+            color: #2c2217;
+            padding: 24px 16px;
+            max-width:720px;
+            margin:0 auto;
+            font-family: "KaiTi","STKaiti","SimSun","serif";
+            min-height:100vh;
         }
-        .box {
-            background: #ffffff;
-            padding: 28px;
-            border-radius: 14px;
-            box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+        .page{display:none;}
+        .page.active{display:block;animation:fadeIn 0.4s ease;}
+
+        @keyframes fadeIn {
+            from{opacity:0;transform:translateY(8px);}
+            to{opacity:1;transform:translateY(0);}
         }
-        .title {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 24px;
-            text-align: center;
-            color: #222;
+        @keyframes shake {
+            0%,100%{transform: translateX(0);}
+            20%,60%{transform: translateX(-4px);}
+            40%,80%{transform: translateX(4px);}
         }
-        .q-text {
-            margin-bottom: 22px;
-            font-size: 19px;
+        @keyframes pulseOk{
+            0%{transform:scale(1);}
+            50%{transform:scale(1.03);}
+            100%{transform:scale(1);}
         }
-        .option-item {
-            margin: 12px 0;
-            cursor: pointer;
+
+        .title{
+            font-size:28px;
+            font-weight:bold;
+            text-align:center;
+            margin:24px 0;
+            color:#5c2c18;
+            letter-spacing:4px;
         }
-        input[type="radio"] {
-            margin-right: 10px;
-            transform: scale(1.15);
+        .menu-item{
+            display:block;
+            width:100%;
+            padding:18px;
+            margin:12px 0;
+            border:1px solid #c8b89e;
+            border-radius:8px;
+            background:#fff9ec;
+            color:#442c1b;
+            font-size:19px;
+            cursor:pointer;
+            transition:all 0.3s ease;
+            font-family: "KaiTi","STKaiti",serif;
         }
-        .tip {
-            margin: 20px 0;
-            font-weight: bold;
-            font-size: 20px;
+        .menu-item:hover{
+            background:#efe2cd;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(92,44,24,0.12);
         }
-        .right {
-            color: #009944;
+
+        .q-box{
+            background:#fffbf2;
+            padding:24px;
+            border-radius:12px;
+            box-shadow:0 2px 14px rgba(70,45,20,0.12);
+            margin:18px 0;
+            border:1px solid #e2d4bc;
         }
-        .wrong {
-            color: #dd2222;
+        .q-text{
+            font-size:18px;
+            margin-bottom:20px;
+            line-height:1.7;
         }
-        .opt-green {
-            color: #009944;
+        .opt-item{
+            display:block;
+            margin:14px 0;
+            padding:14px;
+            border:1px solid #d8c9b0;
+            border-radius:8px;
+            cursor:pointer;
+            background:#fffdf8;
+            transition: all 0.28s ease;
+        }
+        .opt-item:hover{
+            background:#f7efe0;
+            border-color:#b8a588;
+        }
+        .opt-item.wrong{
+            background:#ffe9e6;
+            border-color:#d66b60;
+            color:#a82828;
+            animation: shake 0.4s ease;
+        }
+        .opt-item.right{
+            background:#eaf6e4;
+            border-color:#64a860;
+            color:#1b6020;
+            animation: pulseOk 0.5s ease;
+        }
+        .opt-item.disabled-opt{
+            pointer-events:none;
+            opacity:0.8;
+        }
+        .btn{
+            padding:12px 22px;
+            border:none;
+            border-radius:8px;
+            background:#7c4c2e;
+            color:#fff;
+            font-size:16px;
+            margin:8px 6px 8px 0;
+            cursor:pointer;
+            transition:0.25s;
+            font-family: "KaiTi",serif;
+        }
+        .btn:disabled{
+            background:#b9a898;
+            cursor:not-allowed;
+        }
+        .btn:hover:not(:disabled){
+            background:#5e3820;
+        }
+        .btn-back{
+            background:#887460;
+        }
+        .tip{
+            margin:14px 0;
+            font-size:17px;
             font-weight:bold;
         }
-        .opt-red {
-            color: #dd2222;
+        .parse-block{
+            margin-top:16px;
+            padding:14px;
+            background:#f4ece0;
+            border-radius:8px;
+            border-left:4px solid #b9946e;
+            line-height:1.7;
+        }
+        .parse-title{
             font-weight:bold;
+            margin-bottom:6px;
+            color:#633c22;
         }
-        .next-btn {
-            padding: 11px 24px;
-            border: none;
-            border-radius: 7px;
-            background: #2b78e4;
-            color: #fff;
-            font-size: 17px;
-            cursor: pointer;
-            display: none;
+        /* 单选框点击区域 */
+        .opt-item input{
+            margin-right:10px;
+            transform:scale(1.15);
         }
-        .next-btn:hover {
-            background: #1f62c2;
-        }
-        .stat-box {
-            margin-top: 22px;
-            padding: 18px;
-            background: #f6f8fa;
-            border-radius: 9px;
-            display: none;
-        }
-        #statText {
-            white-space: pre-line;
-            margin-bottom:16px;
-        }
-        .export-btn {
-            padding: 11px 24px;
-            border: none;
-            border-radius: 7px;
-            background: #2b78e4;
-            color: #fff;
-            font-size: 17px;
-            cursor: pointer;
-        }
-        .export-btn:hover {
-            background: #1f62c2;
+        .stat{
+            text-align:center;
+            font-size:20px;
+            margin:20px 0;
         }
     </style>
 </head>
 <body>
-    <div class="box">
-        <div class="title">《短歌行》字词刷题</div>
-        <div id="qBox">
-            <div class="q-text" id="qText"></div>
-            <div id="optWrap"></div>
+    <!-- 目录页 -->
+    <div id="page-menu" class="page active">
+        <h1 class="title">高中文言文实词自测</h1>
+        <button class="menu-item" onclick="startQuiz('duangexing')">《短歌行》（15道）</button>
+        <button class="menu-item" onclick="startQuiz('guiyuantian')">《归园田居（其一）》（12道）</button>
+        <button class="menu-item" onclick="startQuiz('mengyoutian')">《梦游天姥吟留别》（15道）</button>
+        <button class="menu-item" onclick="startQuiz('denggao')">《登高》（8道）</button>
+        <button class="menu-item" onclick="startQuiz('pipaxing')">《琵琶行》（46道）</button>
+    </div>
+    <!-- 答题页 -->
+    <div id="page-quiz" class="page">
+        <div class="title" id="quiz-title"></div>
+        <div class="q-box">
+            <div class="q-text" id="q-text"></div>
+            <div id="opt-wrap"></div>
             <div class="tip" id="tip"></div>
-            <button class="next-btn" id="nextBtn">下一题</button>
-        </div>
-        <div class="stat-box" id="statBox">
-            <div id="statText"></div>
-            <button class="export-btn" id="exportWrongBtn">下载错题库</button>
+            <div id="parse-wrap"></div>
+            <div id="btn-wrap"></div>
         </div>
     </div>
-
+    <!-- 结束页 -->
+    <div id="page-end" class="page">
+        <h1 class="title">本课完成</h1>
+        <div class="stat">答对：<span id="ok">0</span> 题，答错：<span id="err">0</span> 题</div>
+        <button class="btn" onclick="backMenu()">返回目录</button>
+        <button class="btn" id="nextLessonBtn" onclick="nextLesson()">继续下一课</button>
+        <button class="btn" onclick="downloadWrong()">下载错题库</button>
+    </div>
 <script>
-// =========题目区，已经填好你的15道题=========
-const questionList = [
-    {
-        q: "“对酒当歌，人生几何”中“当”的意思是",
-        A: "应当",
-        B: "对着",
-        C: "掌管",
-        D: "抵挡",
-        ans: "B"
+const bank = {
+    duangexing: {
+        name:"《短歌行》",
+        list:[
+            {q:"“对酒当歌，人生几何”中“当”的意思是",opts:["应当","对着","掌管","抵挡"],ans:1,parse:"译文：面对着美酒应当高歌，人生的岁月能有多少。当：对着。"},
+            {q:"“人生几何”中“几何”的意思是",opts:["多少","若干"],ans:0,parse:"几何：古今异义，这里指多少，慨叹人生短暂。"},
+            {q:"“去日苦多”中“苦”的意思是",opts:["痛苦","使……受苦","可悲的是（苦于）","刻苦"],ans:2,parse:"去日：已经逝去的时日；苦多：苦于太多，可悲逝去的日子实在太多。"},
+            {q:"“唯有杜康”中“杜康”的意思是",opts:["造酒者","酒"],ans:1,parse:"相传杜康最早造酒，后世以“杜康”代指酒。"},
+            {q:"“青青子衿”中“衿”的意思是",opts:["衣领","衣襟"],ans:0,parse:"衿：衣领。青色衣领是周代读书人的服饰，代指贤才。"},
+            {q:"“悠悠我心”中“悠悠”的意思是",opts:["悠闲自在","长久","众多","遥远"],ans:1,parse:"悠悠：长久连绵的样子，指思念贤才的情思绵长不绝。"},
+            {q:"“但为君故”中“但”的意思是",opts:["尽管","只、仅","徒然","只要"],ans:1,parse:"但：副词，只，只是；只是因为渴慕贤才的缘故。"},
+            {q:"“沉吟至今”中“沉吟”的意思是",opts:["低声自语","犹豫不决","沉思吟味"],ans:2,parse:"沉吟：沉思吟味，指一直在心中思念贤才。"},
+            {q:"“鼓瑟吹笙”中“鼓”的意思是",opts:["鼓动","鼓胀","击鼓","弹奏"],ans:3,parse:"鼓瑟：弹奏瑟。鼓在这里作动词，弹奏乐器。"},
+            {q:"“越陌度阡”中“陌”的意思是",opts:["陌生","街道","田间东西向小路"],ans:2,parse:"陌：田间东西方向小路；阡：南北向小路。指贤才远道而来。"},
+            {q:"“枉用相存”中“枉”的意思是",opts:["屈尊","冤枉","弯曲","徒然"],ans:0,parse:"枉：屈尊，谦辞，劳烦对方屈尊前来。"},
+            {q:"“枉用相存”中“存”的意思是",opts:["存在","保存","问候、探望","思念"],ans:2,parse:"存：问候，探望。指贤才屈尊前来探望我。"},
+            {q:"“契阔谈讌”中“契阔”的意思是",opts:["勤劳辛苦","久别重逢","长久分别","广阔辽远"],ans:1,parse:"契阔：聚散，这里指久别之后重逢，欢聚宴饮。"},
+            {q:"“绕树三匝”中“匝”的意思是",opts:["周、圈","环绕","完满","笼罩"],ans:0,parse:"匝：周，圈。乌鸦绕树飞了很多圈，无处栖身。"},
+            {q:"“山不厌高”中“厌”的意思是",opts:["厌恶","饱足","压制（厌胜）","满足"],ans:3,parse:"厌：满足。山不满足于高大，海不满足于深邃，比喻广纳贤才。"}
+        ]
     },
-    {
-        q: "“人生几何”中“几何”的意思是",
-        A: "多少",
-        B: "若干",
-        ans: "A"
+    guiyuantian:{
+        name:"《归园田居（其一）》",
+        list:[
+            {q:"“少无适俗韵”中“适”的意思是",opts:["恰好","往、到","适应、迎合","出嫁"],ans:2,parse:"适俗：迎合世俗；韵：本性、气质。年少就没有迎合世俗的本性。"},
+            {q:"“误落尘网中”中“尘网”的意思是",opts:["布满灰尘的网","比喻仕途束缚","世俗礼法","罗网"],ans:1,parse:"尘网：比喻官场，尘世罗网，束缚人的仕途。"},
+            {q:"“羁鸟恋旧林”中“羁”的意思是",opts:["约束、关押","旅居在外","马笼头","停留"],ans:0,parse:"羁鸟：被笼中约束的鸟。羁，约束。比喻被官场束缚的自己。"},
+            {q:"“守拙归园田”中“拙”的意思是",opts:["不善于","愚拙的本性（不学巧伪）","粗劣","谦称自己"],ans:1,parse:"守拙：守住自己愚拙质朴的本性，不学习世俗的机巧伪饰。"},
+            {q:"“方宅十余亩”中“方”的意思是",opts:["合乎礼义的行事准则","周围","方向","方圆，土地面积"],ans:1,parse:"方宅：住宅周围。住宅周围有十多亩田地。"},
+            {q:"“榆柳荫后檐”中“荫”的意思是",opts:["树荫","阴凉","荫庇（祖先恩泽）","遮蔽"],ans:3,parse:"荫作动词，遮蔽。榆树柳树遮蔽了房屋后檐。"},
+            {q:"“桃李罗堂前”中“罗”的意思是",opts:["罗列、排列","用网捕捉","轻软的丝织品","收集"],ans:0,parse:"罗：罗列，排列。桃树李树整齐排列在堂屋前面。"},
+            {q:"“暧暧远人村”中“暧暧”的意思是",opts:["草木茂盛","昏暗不明","迷蒙隐约"],ans:2,parse:"暧暧：迷蒙隐约，远处村落模糊朦胧的样子。"},
+            {q:"“依依墟里烟”中“依依”的意思是",opts:["留恋不舍","隐约的样子","轻柔的样子","茂盛"],ans:1,parse:"依依：炊烟轻柔隐约缓缓升腾的样子。"},
+            {q:"“依依墟里烟”中“墟里”的意思是",opts:["废墟","集市","村落","田野"],ans:2,parse:"墟里：村落，乡里。村落升起袅袅炊烟。"},
+            {q:"“虚室有余闲”中“虚室”的意思是",opts:["空房子","静室","虚幻的房间"],ans:1,parse:"虚室：清静闲静的居室，内心也清净安闲。"},
+            {q:"“复得返自然”中“自然”的意思是",opts:["大自然","理所当然","田园自然状态、本性","自由自在"],ans:2,parse:"自然：既指田园生活，也指自己本来的天性本性。"}
+        ]
     },
-    {
-        q: "“去日苦多”中“苦”的意思是",
-        A: "痛苦",
-        B: "使……受苦",
-        C: "可悲的是（苦于）",
-        D: "刻苦",
-        ans: "C"
+    mengyoutian: {
+        name:"《梦游天姥吟留别》",
+        list:[
+            {q:"“烟涛微茫信难求”中“信”的意思是",opts:["书信","信任","确实","相信"],ans:2,parse:"信：副词，确实、实在。烟波浩渺，瀛洲实在难以寻求。"},
+            {q:"“天姥连天向天横”中“横”的意思是",opts:["横竖","遮蔽","蛮横","横渡"],ans:1,parse:"横：遮蔽。天姥山高耸连天，遮断天空。"},
+            {q:"“势拔五岳掩赤城”中“拔”的意思是",opts:["抽出","超出","选拔","攻取"],ans:1,parse:"拔：超出。山势高峻超出五岳，掩盖赤城山。"},
+            {q:"“我欲因之梦吴越”中“因”的意思是",opts:["依据","顺着","于是","沿袭"],ans:0,parse:"因：依据。我依据传闻，在梦里游历吴越。"},
+            {q:"“渌水荡漾清猿啼”中“渌”的意思是",opts:["清澈","碧绿"],ans:0,parse:"渌水：清澈的流水。"},
+            {q:"“迷花倚石忽已暝”中“暝”的意思是",opts:["黄昏","天色昏暗"],ans:1,parse:"暝：天色昏暗。迷恋花草倚靠山石，忽然天色已经暗下来。"},
+            {q:"“熊咆龙吟殷岩泉”中“殷”的意思是",opts:["恳切","富足","震动","深红"],ans:2,parse:"殷（yǐn）：动词，震动。熊咆哮龙长吟，使山岩泉水为之震动。"},
+            {q:"“栗深林兮惊层巅”中“栗”的意思是",opts:["谷实饱满","发抖","使……战栗","坚硬"],ans:2,parse:"栗：使动用法，使……战栗。使幽深森林战栗，层层山峰为之震惊。"},
+            {q:"“水澹澹兮生烟”中“澹澹”的意思是",opts:["安静","满足","清淡","水波荡漾"],ans:3,parse:"澹澹：水波荡漾晃动的样子。水波荡漾升起阵阵烟雾。"},
+            {q:"“列缺霹雳”中“列缺”的意思是",opts:["高空","闪电"],ans:1,parse:"列缺：指闪电。电光雷鸣，洞天石门轰然打开。"},
+            {q:"“青冥浩荡不见底”中“青冥”的意思是",opts:["宝剑名","天空"],ans:1,parse:"青冥：青色高远的天空。天空广阔浩渺看不到尽头。"},
+            {q:"“虎鼓瑟兮鸾回车”中“鼓”的意思是",opts:["弹奏","鼓动","击鼓","鼓胀"],ans:0,parse:"鼓瑟：弹奏瑟。老虎弹奏琴瑟，鸾鸟牵引车驾。"},
+            {q:"“惟觉时之枕席”中“觉”的意思是",opts:["感觉","觉得","醒","睡觉"],ans:2,parse:"觉（jué）：睡醒。醒来只看见枕边枕席。"},
+            {q:"“失向来之烟霞”中“向来”的意思是",opts:["一贯如此","原来、刚才"],ans:1,parse:"向来：刚才，原来。刚才梦中那些仙境烟霞都消失不见了。"},
+            {q:"“安能摧眉折腰事权贵”中“事”的意思是",opts:["职守，政事","从事","侍奉","任用"],ans:2,parse:"事：侍奉，伺候。怎么能够低头弯腰去侍奉权贵。"}
+        ]
     },
-    {
-        q: "“唯有杜康”中“杜康”的意思是",
-        A: "造酒者",
-        B: "酒",
-        ans: "B"
+    denggao: {
+        name:"《登高》",
+        list:[
+            {q:"“渚清沙白鸟飞回”中“渚”的意思是",opts:["水边","水中小洲"],ans:1,parse:"渚：水中的小沙洲。沙洲水清沙白，鸟儿回旋飞舞。"},
+            {q:"“渚清沙白鸟飞回”中“回”的意思是",opts:["返回","回绕","回头","回旋、盘旋"],ans:3,parse:"回：盘旋回旋。秋风中飞鸟在空中盘旋。"},
+            {q:"“无边落木萧萧下”中“萧萧”的意思是",opts:["马叫声","萧条冷落","风吹叶落的声音","稀疏"],ans:2,parse:"萧萧：秋风吹动树叶飘落的声响。落木：落叶。"},
+            {q:"“百年多病独登台”中“百年”的意思是",opts:["一生、晚年","一百年","年代久远"],ans:0,parse:"百年：借指晚年。晚年多灾多病，独自登上高台。"},
+            {q:"“万里悲秋常作客”中“作客”的意思是",opts:["做客","旅居在外","经商在外"],ans:1,parse:"作客：漂泊旅居他乡。常年漂泊异地。"},
+            {q:"“艰难苦恨繁霜鬓”中“苦恨”的意思是",opts:["痛苦和仇恨","苦于怨恨","非常遗憾"],ans:2,parse:"苦恨：极恨，非常遗憾。世事艰难，满怀遗憾，两鬓已经布满白发。"},
+            {q:"“潦倒新停浊酒杯”中“潦倒”的意思是",opts:["衰颓、失意","脚步不稳","放荡不羁"],ans:0,parse:"潦倒：身世衰颓，失意困顿。"},
+            {q:"“潦倒新停浊酒杯”中“新”的意思是",opts:["新的","重新","刚刚、最近"],ans:2,parse:"新：刚刚。刚刚才停止饮酒。"}
+        ]
     },
-    {
-        q: "“青青子衿”中“衿”的意思是",
-        A: "衣领",
-        B: "衣襟",
-        ans: "A"
-    },
-    {
-        q: "“悠悠我心”中“悠悠”的意思是",
-        A: "悠闲自在",
-        B: "长久",
-        C: "众多",
-        D: "遥远",
-        ans: "B"
-    },
-    {
-        q: "“但为君故”中“但”的意思是",
-        A: "尽管",
-        B: "只、仅",
-        C: "徒然",
-        D: "只要",
-        ans: "B"
-    },
-    {
-        q: "“沉吟至今”中“沉吟”的意思是",
-        A: "低声自语",
-        B: "犹豫不决",
-        C: "沉思吟味",
-        ans: "C"
-    },
-    {
-        q: "“鼓瑟吹笙”中“鼓”的意思是",
-        A: "鼓动",
-        B: "鼓胀",
-        C: "击鼓",
-        D: "弹奏",
-        ans: "D"
-    },
-    {
-        q: "“越陌度阡”中“陌”的意思是",
-        A: "陌生",
-        B: "街道",
-        C: "田间东西向小路",
-        ans: "C"
-    },
-    {
-        q: "“枉用相存”中“枉”的意思是",
-        A: "屈尊",
-        B: "冤枉",
-        C: "弯曲",
-        D: "徒然",
-        ans: "A"
-    },
-    {
-        q: "“枉用相存”中“存”的意思是",
-        A: "存在",
-        B: "保存",
-        C: "问候、探望",
-        D: "思念",
-        ans: "C"
-    },
-    {
-        q: "“契阔谈讌”中“契阔”的意思是",
-        A: "勤劳辛苦",
-        B: "久别重逢",
-        C: "长久分别",
-        D: "广阔辽远",
-        ans: "B"
-    },
-    {
-        q: "“绕树三匝”中“匝”的意思是",
-        A: "周、圈",
-        B: "环绕",
-        C: "完满",
-        D: "笼罩",
-        ans: "A"
-    },
-    {
-        q: "“山不厌高”中“厌”的意思是",
-        A: "厌恶",
-        B: "饱足",
-        C: "压制（厌胜）",
-        D: "满足",
-        ans: "D"
+    pipaxing: {
+        name:"《琵琶行》",
+        list:[
+            {q:"“元和十年，予左迁九江郡司马。明年秋……”中“明年”的意思是",opts:["第二年","今年的下一年"],ans:0,parse:"明年：古义为第二年；今义指下一年，是典型古今异义。"},
+            {q:"“委身为贾人妇”中“委身”的意思是",opts:["托身、嫁","委屈自己","委托身体","舍弃生命"],ans:0,parse:"委身：托身，这里指女子出嫁，嫁给商人。贾（gǔ）人：商人。"},
+            {q:"“年长色衰”中“色”的意思是",opts:["颜色","容貌","神色"],ans:1,parse:"色：容貌，姿色。年纪增长，容颜衰老。"},
+            {q:"“曲罢悯然”中“悯然”的意思是",opts:["怜悯的样子","忧郁、伤感的样子"],ans:1,parse:"悯然：忧郁伤感的神情。一曲弹完，神情伤感。"},
+            {q:"“今漂沦憔悴”中“漂沦”的意思是",opts:["漂浮沉沦","沦陷","漂泊沦落"],ans:2,parse:"漂沦：漂泊沦落。如今漂泊沦落，面容困顿。"},
+            {q:"“今漂沦憔悴”中“憔悴”的意思是",opts:["困顿萎靡的样子","枯瘦","凋零"],ans:0,parse:"憔悴：人处境困顿，容颜萎靡。"},
+            {q:"“转徙于江湖间”中“转徙”的意思是",opts:["转变迁移","调任官职","旋转移动","辗转迁徙、流浪"],ans:3,parse:"转徙：辗转迁移，四处流浪。江湖：泛指各地。"},
+            {q:"“予出官二年”中“出官”的意思是",opts:["京官贬黜到地方任职","外出做官","辞官","出任高官"],ans:0,parse:"出官：京官外调，这里指被贬离开京城到地方。"},
+            {q:"“恬然自安”中“恬然”的意思是",opts:["宁静安适的样子","满不在乎"],ans:0,parse:"恬然：心境宁静安适。贬官之后自己安于处境。"},
+            {q:"“是夕始觉有迁谪意”中“迁谪”的意思是",opts:["迁移贬谪","升迁调任","贬官降职或流放","迁徙定居"],ans:2,parse:"迁谪：贬官，降职流放。这天晚上才体会到被贬谪的失意。"},
+            {q:"“是夕始觉有迁谪意”中“是”的意思是",opts:["判断动词，是","这","正确","于是"],ans:1,parse:"是：指示代词，这。这天晚上。"},
+            {q:"“因为长句”中“因为”的意思是",opts:["表原因的连词","为了","因为……所以","于是创作"],ans:3,parse:"因为：古为两个词，因：于是；为：创作。于是写了这首七言诗。"},
+            {q:"“因为长句”中“长句”的意思是",opts:["长的句子","七言诗"],ans:1,parse:"唐代习惯把七言古诗叫长句。"},
+            {q:"“歌以赠之”中“歌”的意思是",opts:["歌曲","唱","作歌、写诗","歌颂"],ans:2,parse:"歌，动词，作诗、作歌，写诗赠送给她。"},
+            {q:"“凡六百一十六言”中“凡”的意思是",opts:["总共","凡是","平凡","大概"],ans:0,parse:"凡：总共。全诗一共六百一十六个字。"},
+            {q:"“凡六百一十六言”中“言”的意思是",opts:["话语","说","字","言论"],ans:2,parse:"言：指文字。古代“言”可以指一个字。"},
+            {q:"“命曰《琵琶行》”中“命”的意思是",opts:["生命","命名、题名","吩咐","命令"],ans:1,parse:"命：命名，题名，把这首诗题名为《琵琶行》。"},
+            {q:"“铮铮然有京都声”中“铮铮”的意思是",opts:["形容金属撞击的清脆声响","形容坚强","形容争论激烈","形容锋利"],ans:0,parse:"铮铮：琵琶弹奏清脆铿锵的声响。"},
+            {q:"“枫叶荻花秋瑟瑟”中“瑟瑟”的意思是",opts:["碧绿色","瑟缩","形容风吹草木的声音"],ans:2,parse:"瑟瑟：秋风吹动枫叶荻花的萧瑟声响。"},
+            {q:"“举酒欲饮无管弦”中“管弦”的意思是",opts:["管子和琴弦","代指音乐","管理弦乐"],ans:1,parse:"管弦借代，代指音乐。想要饮酒，却没有音乐助兴。"},
+            {q:"“醉不成欢惨将别”中“惨”的意思是",opts:["凄惨","惨白","残酷","悲伤"],ans:3,parse:"惨：悲伤凄伤。喝了酒却没有欢乐，心中悲伤将要离别。"},
+            {q:"“琵琶声停欲语迟”中“迟”的意思是",opts:["迟到","迟疑、犹豫","缓慢","晚"],ans:1,parse:"迟：迟疑犹豫。琵琶停下，想要说话却又迟疑。"},
+            {q:"“添酒回灯重开宴”中“回灯”的意思是",opts:["重新拨亮灯","把灯转过去","退还灯"],ans:0,parse:"回灯：把快要暗下去的灯火重新拨亮。"},
+            {q:"“弦弦掩抑声声思”中“掩抑”的意思是",opts:["掩盖压抑","声音低沉压抑","掩面哭泣","抑制不住"],ans:1,parse:"掩抑：指琵琶乐声调低沉压抑。"},
+            {q:"“弦弦掩抑声声思”中“思”的意思是",opts:["思考","思念","深长的情思"],ans:2,parse:"思（sì）：名词，深长的情思，愁思。"},
+            {q:"“低眉信手续续弹”中“信”的意思是",opts:["真实","确实","书信","随便"],ans:3,parse:"信手：随手。低着头随手连续弹奏。"},
+            {q:"“间关莺语花底滑”中“滑”的意思是",opts:["光滑","流畅","狡猾","滑动"],ans:1,parse:"滑：指乐声婉转流畅。像黄莺在花下啼叫那样流利动听。"},
+            {q:"“幽咽泉流冰下难”中“幽咽”的意思是",opts:["低声哭泣","低微不畅"],ans:0,parse:"幽咽：乐声微弱滞涩，如同冰下泉水流动微弱不畅。"},
+            {q:"“银瓶乍破水浆迸”中“乍”的意思是",opts:["刚刚","正好","突然"],ans:2,parse:"乍：突然。如同银瓶骤然破裂，水浆喷射而出。"},
+            {q:"“铁骑突出刀枪鸣”中“突出”的意思是",opts:["杰出","鼓出来","突然冲出"],ans:2,parse:"突出：古指突然冲出。铁骑突然杀出，刀枪齐鸣。"},
+            {q:"“整顿衣裳起敛容”中“整顿”的意思是",opts:["整理","治理","整齐","整队"],ans:0,parse:"整顿：整理。整理衣裳，神色庄重。"},
+            {q:"“曲罢曾教善才服”中“服”的意思是",opts:["衣服","服从","佩服、叹服","服侍"],ans:2,parse:"善才：琵琶高手。一曲弹完，曾经让琵琶大师叹服。"},
+            {q:"“五陵年少争缠头”中“缠头”的意思是",opts:["裹头的布","头巾","缠绕头部","赏赐歌伎的锦帛财物"],ans:3,parse:"缠头：唐代习俗，听完乐舞赏赐歌女的锦帛财物。"},
+            {q:"“秋月春风等闲度”中“等闲”的意思是",opts:["平常","随便、轻易"],ans:1,parse:"等闲：轻易，随便。美好的年华就这样轻易虚度。"},
+            {q:"“暮去朝来颜色故”中“故”的意思是",opts:["缘故","故意","衰老、变旧","旧交"],ans:2,parse:"故：衰老。岁月流逝，容颜已经衰老。"},
+            {q:"“暮去朝来颜色故”中“颜色”的意思是",opts:["色彩","容貌","脸色"],ans:1,parse:"颜色：古义指容貌姿色，今义多指色彩。"},
+            {q:"“老大嫁作商人妇”中“老大”的意思是",opts:["排行第一","非常","首领","年纪大了"],ans:3,parse:"老大：年纪大。年纪大了就嫁给商人做妻子。"},
+            {q:"“去来江口守空船”中“去来”的意思是",opts:["去了以后","去和来","离开又回来","来回走动"],ans:0,parse:"去来：去了以后。商人离去之后，在江口独守空船。"},
+            {q:"“梦啼妆泪红阑干”中“阑干”的意思是",opts:["栏杆","纵横散乱的样子","阻拦"],ans:1,parse:"阑干：纵横交错。梦中哭泣，脸上脂粉泪水纵横流淌。"},
+            {q:"“又闻此语重唧唧”中“唧唧”的意思是",opts:["叹息声","虫鸣声","机杼声"],ans:0,parse:"唧唧：叹息声。听到琵琶女自述身世，我又为之叹息。"},
+            {q:"“凄凄不似向前声”中“向前”的意思是",opts:["朝着前方","刚才、以前","向前行进","将来"],ans:1,parse:"向前：古义，刚才，先前。乐声凄苦，不像刚才弹奏的曲调。"},
+            {q:"“如听仙乐耳暂明”中“暂”的意思是",opts:["短暂","暂且","暂时","顿时、忽然"],ans:3,parse:"暂：顿时，一下子。仿佛听到仙乐，耳朵顿时清亮。"},
+            {q:"“为君翻作《琵琶行》”中“翻作”的意思是",opts:["翻转制作","按照曲调创作歌词","翻译作品","翻动写作"],ans:1,parse:"翻作：依照乐曲曲调创作歌辞。"},
+            {q:"“却坐促弦弦转急”中“却坐”的意思是",opts:["但是坐下","退却而坐","拒绝坐下","退回原处坐下"],ans:3,parse:"却坐：退回到原来座位上坐下。促弦：拧紧琴弦。"},
+            {q:"“满座重闻皆掩泣”中“掩泣”的意思是",opts:["掩面哭泣","掩盖哭声","遮掩哭泣的人","停止哭泣"],ans:0,parse:"掩泣：掩住脸面哭泣。满座的人再次听到乐曲都掩面落泪。"},
+            {q:"“座中泣下谁最多”中“泣”的意思是",opts:["哭泣","眼泪","小声哭","抽噎"],ans:1,parse:"泣：名词，眼泪。在座谁流下的眼泪最多。"}
+        ]
     }
-];
-// =================================
-
-let current = 0;
-let rightCnt = 0;
-let wrongCnt = 0;
+};
+const order = ["duangexing","guiyuantian","mengyoutian","denggao","pipaxing"];
+const letter = ["A","B","C","D"];
+let curKey = "";
+let curIdx = 0;
+let okCnt = 0;
+let errCnt = 0;
 let wrongList = [];
-let isLock = false;
+let answered = false;
+let autoTimer = null;
+// 保存每一题作答记录 {idx:用户选择下标}
+let answerRecord = {};
 
-const qText = document.getElementById("qText");
-const optWrap = document.getElementById("optWrap");
-const tip = document.getElementById("tip");
-const nextBtn = document.getElementById("nextBtn");
-const statBox = document.getElementById("statBox");
-const statText = document.getElementById("statText");
-const exportWrongBtn = document.getElementById("exportWrongBtn");
+function showPage(id){
+    document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+}
+function startQuiz(key){
+    curKey = key;
+    curIdx = 0; okCnt=0; errCnt=0; wrongList=[]; answered=false;
+    answerRecord = {};
+    clearTimeout(autoTimer);
+    document.getElementById("quiz-title").innerText = bank[curKey].name;
+    showQ();
+    showPage("page-quiz");
+}
+function showQ(){
+    const qs = bank[curKey].list;
+    const item = qs[curIdx];
+    answered = !!answerRecord[curIdx];
+    clearTimeout(autoTimer);
+    document.getElementById("q-text").innerText = `【Q${curIdx+1}/${qs.length}】 ${item.q}`;
+    const wrap = document.getElementById("opt-wrap");
+    wrap.innerHTML = "";
+    document.getElementById("parse-wrap").innerHTML = "";
+    document.getElementById("tip").innerText = "";
 
-nextBtn.onclick = function(){
-    current++;
-    if(current >= questionList.length){
-        showResult();
+    item.opts.forEach((txt,i)=>{
+        const div = document.createElement("label");
+        div.className = "opt-item";
+        div.innerHTML = `<input type="radio" name="opt" value="${i}" onchange="selectAns(${i})"> ${letter[i]}：${txt}`;
+        wrap.appendChild(div);
+    })
+
+    // 如果这题已经做过，回填状态，禁止修改选项
+    if(answerRecord[curIdx] !== undefined){
+        const userSel = answerRecord[curIdx];
+        const optsDom = document.querySelectorAll(".opt-item");
+        optsDom[userSel].querySelector("input").checked = true;
+        optsDom.forEach(d=>d.classList.add("disabled-opt"));
+        if(userSel === item.ans){
+            optsDom[userSel].classList.add("right");
+            document.getElementById("tip").innerText = "✅ 回答正确";
+        }else{
+            optsDom[userSel].classList.add("wrong");
+            optsDom[item.ans].classList.add("right");
+            document.getElementById("tip").innerText = `❌ 答错了，正确答案：${letter[item.ans]}`;
+        }
+        // 展示解析
+        document.getElementById("parse-wrap").innerHTML = `<div class="parse-block"><div class="parse-title">📖解析：</div>${item.parse}</div>`;
+    }
+
+    renderBtnBar();
+}
+
+//渲染导航按钮：上一题、下一题
+function renderBtnBar(){
+    const qs = bank[curKey].list;
+    const btnWrap = document.getElementById("btn-wrap");
+    btnWrap.innerHTML = "";
+
+    const prevBtn = document.createElement("button");
+    prevBtn.className = "btn";
+    prevBtn.innerText = "上一题";
+    prevBtn.disabled = curIdx <= 0;
+    prevBtn.onclick = goPrev;
+    btnWrap.appendChild(prevBtn);
+
+    //只要已经作答，就显示下一题，修复bug，回看历史题目下一题可用
+    if(answered){
+        const nextBtn = document.createElement("button");
+        nextBtn.className = "btn";
+        nextBtn.innerText = curIdx >= qs.length -1 ? "查看结果" : "下一题";
+        nextBtn.onclick = goNext;
+        btnWrap.appendChild(nextBtn);
+    }
+}
+
+function goPrev(){
+    if(curIdx > 0){
+        curIdx--;
+        showQ();
+    }
+}
+function goNext(){
+    curIdx++;
+    const qs = bank[curKey].list;
+    if(curIdx >= qs.length){
+        endPage();
     }else{
         showQ();
     }
 }
 
-function showQ() {
-    tip.innerText = "";
-    nextBtn.style.display = "none";
-    isLock = false;
-    const q = questionList[current];
-    qText.innerText = `【Q${current+1}/${questionList.length}】${q.q}`;
-    optWrap.innerHTML = "";
-    // 自动提取当前题目拥有的选项
-    const keys = Object.keys(q).filter(k=>["A","B","C","D"].includes(k));
-    keys.forEach(key=>{
-        const div = document.createElement("div");
-        div.className = "option-item";
-        const idName = "radio_" + key + "_" + current;
-        div.innerHTML = `<input type="radio" name="opt" value="${key}" id="${idName}">
-        <label for="${idName}" data-key="${key}">${key}. ${q[key]}</label>`;
-        const radio = div.querySelector('input');
-        radio.onchange = function(){
-            if(isLock) return;
-            isLock = true;
-            const myAns = this.value;
-            const realAns = q.ans;
-            const allLabels = optWrap.querySelectorAll('label');
-            allLabels.forEach(label=>{
-                const k = label.getAttribute('data-key');
-                if(k === realAns){
-                    label.classList.add('opt-green');
-                }
-                if(k === myAns && myAns !== realAns){
-                    label.classList.add('opt-red');
-                }
-            })
-            if(myAns === realAns){
-                tip.innerText = "✅ 答对啦！";
-                tip.className = "tip right";
-                rightCnt++;
-                setTimeout(()=>{
-                    current++;
-                    if(current >= questionList.length){
-                        showResult();
-                    }else{
-                        showQ();
-                    }
-                },1200)
-            }else{
-                tip.innerText = `❌ 答错了，正确答案：${realAns}`;
-                tip.className = "tip wrong";
-                wrongCnt++;
-                wrongList.push(questionList[current]);
-                nextBtn.style.display = "block";
-            }
-        }
-        optWrap.appendChild(div);
-    })
-}
+function selectAns(i){
+    if(answered) return;
+    answered = true;
+    const qs = bank[curKey].list;
+    const item = qs[curIdx];
+    //保存作答记录
+    answerRecord[curIdx] = i;
 
-function showResult(){
-    document.getElementById("qBox").style.display = "none";
-    statBox.style.display = "block";
-    statText.innerText = `答题完成！
-总题数：${questionList.length}
-✅答对：${rightCnt}题
-❌答错：${wrongCnt}题`
-}
+    const opts = document.querySelectorAll(".opt-item");
+    //渲染解析
+    const parseWrap = document.getElementById("parse-wrap");
+    parseWrap.innerHTML = `<div class="parse-block"><div class="parse-title">📖解析：</div>${item.parse}</div>`;
 
-exportWrongBtn.onclick = function(){
-    if(wrongList.length === 0){
-        alert("🎉 本次没有错题！");
-        return;
+    if(i === item.ans){
+        okCnt++;
+        document.getElementById("tip").innerText = "✅ 回答正确";
+        opts[i].classList.add("right");
+        //答对1.2s自动跳
+        autoTimer = setTimeout(()=>{
+            goNext();
+        },1200);
+    }else{
+        errCnt++;
+        wrongList.push({
+            title:bank[curKey].name,
+            q:`【Q${curIdx+1}/${qs.length}】 ${item.q}`,
+            your:`${letter[i]}：${item.opts[i]}`,
+            right:`${letter[item.ans]}：${item.opts[item.ans]}`
+        });
+        opts[i].classList.add("wrong");
+        opts[item.ans].classList.add("right");
+        document.getElementById("tip").innerText = `❌ 答错了，正确答案：${letter[item.ans]}`;
     }
-    let text = "=====错题库=====\n";
-    wrongList.forEach(item=>{
-        text += `题目：${item.q}\n`;
-        const keys = Object.keys(item).filter(k=>["A","B","C","D"].includes(k));
-        keys.forEach(k=>{
-            text += `${k}:${item[k]}  `;
-        })
-        text += `\n答案：${item.ans}\n\n`
-    })
-    const blob = new Blob([text], {type:"text/plain;charset=utf-8"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "短歌行_错题库.txt";
-    a.click();
-    URL.revokeObjectURL(url);
+    //作答完成，禁用选项
+    opts.forEach(d=>d.classList.add("disabled-opt"));
+    renderBtnBar();
 }
 
-showQ();
+function endPage(){
+    clearTimeout(autoTimer);
+    document.getElementById("ok").innerText = okCnt;
+    document.getElementById("err").innerText = errCnt;
+    const idx = order.indexOf(curKey);
+    const hasNext = idx+1 < order.length;
+    document.getElementById("nextLessonBtn").style.display = hasNext ? "inline-block" : "none";
+    showPage("page-end");
+}
+function backMenu(){
+    clearTimeout(autoTimer);
+    showPage("page-menu");
+}
+function nextLesson(){
+    const idx = order.indexOf(curKey);
+    if(idx+1 < order.length){
+        startQuiz(order[idx+1]);
+    }
+}
+function downloadWrong(){
+    if(!wrongList.length){alert("本次没有错题！");return;}
+    let text = "【高中文言文实词自测 - 错题库】\n";
+    wrongList.forEach(x=>{
+        text += `\n课文：${x.title}\n题目：${x.q}\n你的答案：${x.your}\n正确答案：${x.right}\n`;
+    })
+    const blob = new Blob([text],{type:"text/plain;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "错题本.txt";
+    a.click();
+}
 </script>
 </body>
 </html>

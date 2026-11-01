@@ -298,7 +298,8 @@
     <div id="page-end" class="page">
         <div class="end-wrap">
             <div class="end-title">本课完成</div>
-            <div class="end-info" id="endInfo"></div>
+            <div class="end-info" id="endInfoName"></div>
+            <div class="end-info" id="endInfoLesson"></div>
             <div class="end-time" id="endTime"></div>
             <div class="end-desc">勤学笃思，积微成著</div>
             <div class="end-stat-row">答对：<span class="ok-text" id="ok">0</span> 题</div>
@@ -729,11 +730,14 @@ function endPage(){
     const total = okCnt + errCnt;
     const rate = total === 0 ? "0%" : Math.round(okCnt / total * 100) + "%";
     document.getElementById("rate").innerText = rate;
+
     if(isWrongBankMode){
-        document.getElementById("endInfo").innerText = `考生：${studentName}｜模式：${bank[currentWrongLessonKey].name} 错题练习`;
+        document.getElementById("endInfoName").innerText = `考生：${studentName}`;
+        document.getElementById("endInfoLesson").innerText = `模式：${bank[currentWrongLessonKey].name} 错题练习`;
         document.getElementById("nextLessonBtn").style.display = "none";
     }else{
-        document.getElementById("endInfo").innerText = `考生：${studentName}｜测试篇目：${bank[curKey].name}`;
+        document.getElementById("endInfoName").innerText = `考生：${studentName}`;
+        document.getElementById("endInfoLesson").innerText = `测试篇目：${bank[curKey].name}`;
         const idx = order.indexOf(curKey);
         const hasNext = idx+1 < order.length;
         document.getElementById("nextLessonBtn").style.display = hasNext ? "inline-block" : "none";
@@ -767,4 +771,3 @@ function downloadWrong(){
 </script>
 </body>
 </html>
-<!-- （注：内容由AI生成） -->

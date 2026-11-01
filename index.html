@@ -324,7 +324,6 @@ let curIdx = 0;
 let okCnt = 0;
 let errCnt = 0;
 let wrongList = [];
-let answered = false;
 let autoTimer = null;
 // 保存每一题作答记录 {idx:用户选择下标}
 let answerRecord = {};
@@ -335,7 +334,7 @@ function showPage(id){
 }
 function startQuiz(key){
     curKey = key;
-    curIdx = 0; okCnt=0; errCnt=0; wrongList=[]; answered=false;
+    curIdx = 0; okCnt=0; errCnt=0; wrongList=[];
     answerRecord = {};
     clearTimeout(autoTimer);
     document.getElementById("quiz-title").innerText = bank[curKey].name;
@@ -345,7 +344,8 @@ function startQuiz(key){
 function showQ(){
     const qs = bank[curKey].list;
     const item = qs[curIdx];
-    answered = !!answerRecord[curIdx];
+    // ✅ 重点修改：不再依赖answered变量，直接从记录判断是否答过
+    const hasAnswered = answerRecord[curIdx] !== undefined;
     clearTimeout(autoTimer);
     document.getElementById("q-text").innerText = `【Q${curIdx+1}/${qs.length}】 ${item.q}`;
     const wrap = document.getElementById("opt-wrap");
@@ -361,7 +361,7 @@ function showQ(){
     })
 
     // 如果这题已经做过，回填状态，禁止修改选项
-    if(answerRecord[curIdx] !== undefined){
+    if(hasAnswered){
         const userSel = answerRecord[curIdx];
         const optsDom = document.querySelectorAll(".opt-item");
         optsDom[userSel].querySelector("input").checked = true;
@@ -386,6 +386,8 @@ function renderBtnBar(){
     const qs = bank[curKey].list;
     const btnWrap = document.getElementById("btn-wrap");
     btnWrap.innerHTML = "";
+    // ✅ 判断当前题有没有作答记录
+    const hasAnswered = answerRecord[curIdx] !== undefined;
 
     const prevBtn = document.createElement("button");
     prevBtn.className = "btn";
@@ -394,8 +396,8 @@ function renderBtnBar(){
     prevBtn.onclick = goPrev;
     btnWrap.appendChild(prevBtn);
 
-    //只要已经作答，就显示下一题，修复bug，回看历史题目下一题可用
-    if(answered){
+    //只要当前题号存在作答记录，就显示下一题按钮
+    if(hasAnswered){
         const nextBtn = document.createElement("button");
         nextBtn.className = "btn";
         nextBtn.innerText = curIdx >= qs.length -1 ? "查看结果" : "下一题";
@@ -421,8 +423,8 @@ function goNext(){
 }
 
 function selectAns(i){
-    if(answered) return;
-    answered = true;
+    // 防止重复选择
+    if(answerRecord[curIdx] !== undefined) return;
     const qs = bank[curKey].list;
     const item = qs[curIdx];
     //保存作答记录

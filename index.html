@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>高中文言文实词自测｜古风版</title>
+    <title>高中文言文实词自测</title>
     <style>
         * {
             box-sizing: border-box;
@@ -54,6 +54,24 @@
             color:#5c2c18;
             letter-spacing:4px;
         }
+        .name-input-wrap{
+            margin:16px 0 24px;
+            text-align:center;
+        }
+        .name-input-wrap label{
+            font-size:18px;
+            color:#442c1b;
+        }
+        #stuName{
+            padding:10px 14px;
+            border:1px solid #c8b89e;
+            border-radius:6px;
+            font-size:17px;
+            width:220px;
+            background:#fff9ec;
+            font-family: "KaiTi","STKaiti",serif;
+            margin-left:8px;
+        }
         .menu-item{
             display:block;
             width:100%;
@@ -72,6 +90,10 @@
             background:#efe2cd;
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(92,44,24,0.12);
+        }
+        .menu-item.wrongbank{
+            background:#fff2e0;
+            border-color:#d4a270;
         }
 
         .q-box{
@@ -196,8 +218,23 @@
             font-size:32px;
             color:#5c2c18;
             letter-spacing:4px;
-            margin-bottom:24px;
+            margin-bottom:12px;
             animation:float 3s ease-in-out infinite;
+        }
+        .end-info{
+            font-size:18px;
+            color:#633c22;
+            margin-bottom:8px;
+        }
+        .end-time{
+            font-size:16px;
+            color:#775544;
+            margin-bottom:20px;
+        }
+        .end-desc{
+            margin:20px 0 28px;
+            font-size:17px;
+            color:#554433;
         }
         .end-stat-row{
             font-size:20px;
@@ -212,10 +249,10 @@
             color:#a82828;
             font-weight:bold;
         }
-        .end-desc{
-            margin:20px 0 28px;
-            font-size:17px;
-            color:#554433;
+        .hint-small{
+            font-size:15px;
+            color:#775544;
+            margin:8px 0;
         }
     </style>
 </head>
@@ -223,12 +260,27 @@
     <!-- 目录页 -->
     <div id="page-menu" class="page active">
         <h1 class="title">高中文言文实词自测</h1>
+        <div class="name-input-wrap">
+            <label>姓名：</label>
+            <input type="text" id="stuName" placeholder="请输入姓名">
+        </div>
         <button class="menu-item" onclick="startQuiz('duangexing')">《短歌行》（15道）</button>
         <button class="menu-item" onclick="startQuiz('guiyuantian')">《归园田居（其一）》（12道）</button>
         <button class="menu-item" onclick="startQuiz('mengyoutian')">《梦游天姥吟留别》（15道）</button>
         <button class="menu-item" onclick="startQuiz('denggao')">《登高》（8道）</button>
         <button class="menu-item" onclick="startQuiz('pipaxing')">《琵琶行》（46道）</button>
+        <button class="menu-item wrongbank" onclick="openWrongBankCatalog()">📖 个人错题库专项练习</button>
+        <div class="hint-small">规则：错题连续答对3次自动移出错题库</div>
     </div>
+
+    <!-- 错题分类目录页（新增） -->
+    <div id="page-wrongbank-catalog" class="page">
+        <button class="back-catalog-btn" onclick="backMenu()">← 返回目录</button>
+        <h1 class="title">📖 错题库</h1>
+        <div id="wrongbank-catalog-list"></div>
+        <div class="hint-small" style="text-align:center;margin-top:16px;">点击篇目，进入本课错题练习</div>
+    </div>
+
     <!-- 答题页 -->
     <div id="page-quiz" class="page">
         <button class="back-catalog-btn" onclick="backMenu()">← 返回目录</button>
@@ -241,10 +293,13 @@
             <div id="btn-wrap"></div>
         </div>
     </div>
+
     <!-- 结束页（美化版） -->
     <div id="page-end" class="page">
         <div class="end-wrap">
             <div class="end-title">本课完成</div>
+            <div class="end-info" id="endInfo"></div>
+            <div class="end-time" id="endTime"></div>
             <div class="end-desc">勤学笃思，积微成著</div>
             <div class="end-stat-row">答对：<span class="ok-text" id="ok">0</span> 题</div>
             <div class="end-stat-row">答错：<span class="err-text" id="err">0</span> 题</div>
@@ -388,14 +443,121 @@ let okCnt = 0;
 let errCnt = 0;
 let wrongList = [];
 let autoTimer = null;
-// 保存每一题作答记录 {idx:用户选择下标}
+let studentName = "";
 let answerRecord = {};
+let isWrongBankMode = false;
+let wrongBankQuestions = [];
+let currentWrongLessonKey = "";
+let finishTimeStr = ""; // 记录交卷时间
+
+// ===== 错题库本地存储工具 =====
+function getWrongBank(){
+    let raw = localStorage.getItem("wenyanWrongBank");
+    if(!raw) return {};
+    return JSON.parse(raw);
+}
+function saveWrongBank(bankObj){
+    localStorage.setItem("wenyanWrongBank", JSON.stringify(bankObj));
+}
+// 生成题目唯一id
+function getQId(lessonKey, qIdx){
+    return lessonKey + "|" + qIdx;
+}
+// 添加错题 / 更新连续答对计数
+function updateWrongBank(lessonKey, qIdx, isRight){
+    const wb = getWrongBank();
+    const qid = getQId(lessonKey, qIdx);
+    if(!wb[qid]){
+        wb[qid] = {lessonKey, qIdx, streak:0};
+    }
+    if(isRight){
+        wb[qid].streak += 1;
+        // 连续答对3次 → 移出错题库
+        if(wb[qid].streak >=3){
+            delete wb[qid];
+        }
+    }else{
+        // 答错，清零连续计数
+        wb[qid].streak = 0;
+    }
+    saveWrongBank(wb);
+}
+// 加载错题库，按篇目分组
+function getWrongBankGroup(){
+    const wb = getWrongBank();
+    const group = {};
+    for(let qid in wb){
+        const item = wb[qid];
+        const lk = item.lessonKey;
+        if(!group[lk]) group[lk] = [];
+        group[lk].push(item);
+    }
+    return group;
+}
 
 function showPage(id){
     document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
     document.getElementById(id).classList.add("active");
 }
+
+// 打开错题分类目录页
+function openWrongBankCatalog(){
+    studentName = document.getElementById("stuName").value.trim();
+    if(!studentName){
+        alert("请先填写姓名！");
+        return;
+    }
+    const group = getWrongBankGroup();
+    const wrap = document.getElementById("wrongbank-catalog-list");
+    wrap.innerHTML = "";
+    const keys = Object.keys(group);
+    if(keys.length === 0){
+        wrap.innerHTML = `<div style="text-align:center;margin:24px 0;font-size:18px;color:#554433;">✅ 你的错题库为空！继续加油！</div>`;
+    }else{
+        keys.forEach(lk=>{
+            const cnt = group[lk].length;
+            const name = bank[lk].name;
+            const btn = document.createElement("button");
+            btn.className = "menu-item";
+            btn.innerText = `${name}（错题${cnt}道）`;
+            btn.onclick = ()=> startWrongLessonQuiz(lk);
+            wrap.appendChild(btn);
+        })
+    }
+    showPage("page-wrongbank-catalog");
+}
+
+// 进入单篇错题刷题
+function startWrongLessonQuiz(lessonKey){
+    studentName = document.getElementById("stuName").value.trim();
+    isWrongBankMode = true;
+    currentWrongLessonKey = lessonKey;
+    const group = getWrongBankGroup();
+    const arr = group[lessonKey];
+    wrongBankQuestions = arr.map(item=>{
+        const qData = bank[item.lessonKey].list[item.qIdx];
+        return {
+            qid:getQId(item.lessonKey, item.qIdx),
+            lessonKey:item.lessonKey,
+            qIdx:item.qIdx,
+            qData
+        }
+    })
+    curIdx = 0; okCnt=0; errCnt=0; wrongList=[];
+    answerRecord = {};
+    clearTimeout(autoTimer);
+    document.getElementById("quiz-title").innerText = `📖 ${bank[lessonKey].name} 错题练习（共${wrongBankQuestions.length}题）`;
+    showQ();
+    showPage("page-quiz");
+}
+
 function startQuiz(key){
+    studentName = document.getElementById("stuName").value.trim();
+    if(!studentName){
+        alert("请先填写姓名，再开始答题！");
+        return;
+    }
+    isWrongBankMode = false;
     curKey = key;
     curIdx = 0; okCnt=0; errCnt=0; wrongList=[];
     answerRecord = {};
@@ -404,13 +566,21 @@ function startQuiz(key){
     showQ();
     showPage("page-quiz");
 }
+
 function showQ(){
-    const qs = bank[curKey].list;
-    const item = qs[curIdx];
-    // ✅ 重点修改：不再依赖answered变量，直接从记录判断是否答过
+    let item, qsLen;
+    if(isWrongBankMode){
+        const wrap = wrongBankQuestions[curIdx];
+        item = wrap.qData;
+        qsLen = wrongBankQuestions.length;
+    }else{
+        const qs = bank[curKey].list;
+        item = qs[curIdx];
+        qsLen = qs.length;
+    }
     const hasAnswered = answerRecord[curIdx] !== undefined;
     clearTimeout(autoTimer);
-    document.getElementById("q-text").innerText = `【Q${curIdx+1}/${qs.length}】 ${item.q}`;
+    document.getElementById("q-text").innerText = `【Q${curIdx+1}/${qsLen}】 ${item.q}`;
     const wrap = document.getElementById("opt-wrap");
     wrap.innerHTML = "";
     document.getElementById("parse-wrap").innerHTML = "";
@@ -423,7 +593,6 @@ function showQ(){
         wrap.appendChild(div);
     })
 
-    // 如果这题已经做过，回填状态，禁止修改选项
     if(hasAnswered){
         const userSel = answerRecord[curIdx];
         const optsDom = document.querySelectorAll(".opt-item");
@@ -437,19 +606,20 @@ function showQ(){
             optsDom[item.ans].classList.add("right");
             document.getElementById("tip").innerText = `❌ 答错了，正确答案：${letter[item.ans]}`;
         }
-        // 展示解析
         document.getElementById("parse-wrap").innerHTML = `<div class="parse-block"><div class="parse-title">解析：</div>${item.parse}</div>`;
     }
-
     renderBtnBar();
 }
 
-//渲染导航按钮：上一题、下一题
 function renderBtnBar(){
-    const qs = bank[curKey].list;
+    let qsLen;
+    if(isWrongBankMode){
+        qsLen = wrongBankQuestions.length;
+    }else{
+        qsLen = bank[curKey].list.length;
+    }
     const btnWrap = document.getElementById("btn-wrap");
     btnWrap.innerHTML = "";
-    // ✅ 判断当前题有没有作答记录
     const hasAnswered = answerRecord[curIdx] !== undefined;
 
     const prevBtn = document.createElement("button");
@@ -459,11 +629,10 @@ function renderBtnBar(){
     prevBtn.onclick = goPrev;
     btnWrap.appendChild(prevBtn);
 
-    //只要当前题号存在作答记录，就显示下一题按钮
     if(hasAnswered){
         const nextBtn = document.createElement("button");
         nextBtn.className = "btn";
-        nextBtn.innerText = curIdx >= qs.length -1 ? "查看结果" : "下一题";
+        nextBtn.innerText = curIdx >= qsLen -1 ? "查看结果" : "下一题";
         nextBtn.onclick = goNext;
         btnWrap.appendChild(nextBtn);
     }
@@ -477,8 +646,13 @@ function goPrev(){
 }
 function goNext(){
     curIdx++;
-    const qs = bank[curKey].list;
-    if(curIdx >= qs.length){
+    let qsLen;
+    if(isWrongBankMode){
+        qsLen = wrongBankQuestions.length;
+    }else{
+        qsLen = bank[curKey].list.length;
+    }
+    if(curIdx >= qsLen){
         endPage();
     }else{
         showQ();
@@ -486,15 +660,21 @@ function goNext(){
 }
 
 function selectAns(i){
-    // 防止重复选择
     if(answerRecord[curIdx] !== undefined) return;
-    const qs = bank[curKey].list;
-    const item = qs[curIdx];
-    //保存作答记录
+    let item, lessonKey, qIdx;
+    if(isWrongBankMode){
+        const wrap = wrongBankQuestions[curIdx];
+        item = wrap.qData;
+        lessonKey = wrap.lessonKey;
+        qIdx = wrap.qIdx;
+    }else{
+        const qs = bank[curKey].list;
+        item = qs[curIdx];
+        lessonKey = curKey;
+        qIdx = curIdx;
+    }
     answerRecord[curIdx] = i;
-
     const opts = document.querySelectorAll(".opt-item");
-    //渲染解析
     const parseWrap = document.getElementById("parse-wrap");
     parseWrap.innerHTML = `<div class="parse-block"><div class="parse-title">解析：</div>${item.parse}</div>`;
 
@@ -502,37 +682,64 @@ function selectAns(i){
         okCnt++;
         document.getElementById("tip").innerText = "✅ 回答正确";
         opts[i].classList.add("right");
-        //答对1.2s自动跳
+        // 【修复重点】只有错题模式才更新错题记录；正常刷题答对不碰错题库
+        if(isWrongBankMode){
+            updateWrongBank(lessonKey, qIdx, true);
+        }
         autoTimer = setTimeout(()=>{
             goNext();
         },1200);
     }else{
         errCnt++;
         wrongList.push({
-            title:bank[curKey].name,
-            q:`【Q${curIdx+1}/${qs.length}】 ${item.q}`,
+            title: bank[lessonKey].name,
+            q:`【Q${curIdx+1}】 ${item.q}`,
             your:`${letter[i]}：${item.opts[i]}`,
             right:`${letter[item.ans]}：${item.opts[item.ans]}`
         });
         opts[i].classList.add("wrong");
         opts[item.ans].classList.add("right");
         document.getElementById("tip").innerText = `❌ 答错了，正确答案：${letter[item.ans]}`;
+        // 答错：正常模式、错题模式都要更新错题库
+        updateWrongBank(lessonKey, qIdx, false);
     }
-    //作答完成，禁用选项
     opts.forEach(d=>d.classList.add("disabled-opt"));
     renderBtnBar();
 }
 
+// 格式化时间：YYYY-MM-DD HH:mm:ss
+function formatTime(date){
+    const y = date.getFullYear();
+    const m = String(date.getMonth()+1).padStart(2,'0');
+    const d = String(date.getDate()).padStart(2,'0');
+    const h = String(date.getHours()).padStart(2,'0');
+    const mi = String(date.getMinutes()).padStart(2,'0');
+    const s = String(date.getSeconds()).padStart(2,'0');
+    return `${y}-${m}-${d} ${h}:${mi}:${s}`;
+}
+
 function endPage(){
     clearTimeout(autoTimer);
+    // 记录交卷时间
+    const now = new Date();
+    finishTimeStr = formatTime(now);
+
     document.getElementById("ok").innerText = okCnt;
     document.getElementById("err").innerText = errCnt;
     const total = okCnt + errCnt;
     const rate = total === 0 ? "0%" : Math.round(okCnt / total * 100) + "%";
     document.getElementById("rate").innerText = rate;
-    const idx = order.indexOf(curKey);
-    const hasNext = idx+1 < order.length;
-    document.getElementById("nextLessonBtn").style.display = hasNext ? "inline-block" : "none";
+    if(isWrongBankMode){
+        document.getElementById("endInfo").innerText = `考生：${studentName}｜模式：${bank[currentWrongLessonKey].name} 错题练习`;
+        document.getElementById("nextLessonBtn").style.display = "none";
+    }else{
+        document.getElementById("endInfo").innerText = `考生：${studentName}｜测试篇目：${bank[curKey].name}`;
+        const idx = order.indexOf(curKey);
+        const hasNext = idx+1 < order.length;
+        document.getElementById("nextLessonBtn").style.display = hasNext ? "inline-block" : "none";
+    }
+    // 渲染时间
+    document.getElementById("endTime").innerText = `完成时间：${finishTimeStr}`;
     showPage("page-end");
 }
 function backMenu(){
@@ -547,14 +754,14 @@ function nextLesson(){
 }
 function downloadWrong(){
     if(!wrongList.length){alert("本次没有错题！");return;}
-    let text = "【高中文言文实词自测 - 错题库】\n";
+    let text = `【高中文言文实词自测 - 错题库】\n考生：${studentName}\n完成时间：${finishTimeStr}\n`;
     wrongList.forEach(x=>{
-        text += `\n课文：${x.title}\n题目：${x.q}\n你的答案：${x.your}\n正确答案：${x.right}\n`;
+        text += `\n篇目：${x.title}\n题目：${x.q}\n你的答案：${x.your}\n正确答案：${x.right}\n`;
     })
     const blob = new Blob([text],{type:"text/plain;charset=utf-8"});
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "错题本.txt";
+    a.download = `${studentName}_错题本.txt`;
     a.click();
 }
 </script>

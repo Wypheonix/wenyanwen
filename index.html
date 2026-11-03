@@ -254,6 +254,51 @@
             color:#775544;
             margin:8px 0;
         }
+        /* 荣誉称号样式 */
+        .honor-title{
+            font-size:24px;
+            font-weight:bold;
+            letter-spacing:3px;
+            margin:16px 0 10px;
+            padding:8px 18px;
+            display:inline-block;
+            border-radius:20px;
+            background:#f0e2cd;
+            color:#5c2c18;
+            border:1px dashed #b9946e;
+            animation:pulseOk 1.8s ease infinite;
+        }
+        .honor-yao{
+            background:linear-gradient(135deg,#fff1c9,#ffe08a);
+            border-color:#c9971a;
+            color:#7a4a00;
+            box-shadow:0 0 12px rgba(201,151,26,0.35);
+        }
+        .honor-zongshi{
+            background:linear-gradient(135deg,#e4f1e0,#c4e0bc);
+            border-color:#5f9b57;
+            color:#245c22;
+        }
+        .honor-rusheng{
+            background:linear-gradient(135deg,#e8eef7,#cdddf0);
+            border-color:#6b8fb3;
+            color:#2c4a6b;
+        }
+        .honor-shusheng{
+            background:linear-gradient(135deg,#f6efe0,#e8dcc4);
+            border-color:#a88b5e;
+            color:#5c4020;
+        }
+        .honor-xuezi{
+            background:linear-gradient(135deg,#f0eee8,#dcd5c8);
+            border-color:#9c8f7a;
+            color:#4a3f30;
+        }
+        .honor-luobang{
+            background:linear-gradient(135deg,#f5e3e3,#e6c5c5);
+            border-color:#b06a6a;
+            color:#7a2a2a;
+        }
     </style>
 </head>
 <body>
@@ -307,6 +352,8 @@
             <div class="end-info" id="endInfoLesson"></div>
             <div class="end-time" id="endTime"></div>
             <div class="end-desc">勤学笃思，积微成著</div>
+            <!-- 荣誉称号 -->
+            <div id="honorWrap" style="margin:10px 0 4px;"></div>
             <div class="end-stat-row">答对：<span class="ok-text" id="ok">0</span> 题</div>
             <div class="end-stat-row">答错：<span class="err-text" id="err">0</span> 题</div>
             <div class="end-stat-row">正确率：<span id="rate">0%</span></div>
@@ -478,7 +525,7 @@ const bank = {
             {q:"“乍暖还寒时候，最难将息”中“将息”的意思是",opts:["将要休息","调养、休息"],ans:1,parse:"将息：调养、休息。句意：天气骤然回暖又忽然变冷的时候，最难调养休息。"},
             {q:"“怎敌他、晚来风急”中“敌”的用法和意思是",opts:["名词，敌人","形容词，匹敌的","动词，攻击","名词作动词，抵挡、对付"],ans:3,parse:"敌：动词，抵挡、对付。句意：怎么抵挡得住傍晚袭来的急风。"},
             {q:"“憔悴损”中“憔悴”的意思是",opts:["忧愁","困顿","凋零、枯萎","形容人瘦弱，面色不好"],ans:2,parse:"憔悴：凋零、枯萎。句意：（菊花）凋零枯萎得厉害。"},
-            {q:"“憔悴损”中“损”的意思是",opts:["损失","极、表示程度很深","损害","减少"],ans:1,parse:"损：极、表示程度很深。句意：（菊花）凋零枯萎得厉害。"},
+            {q:"“憔悴损”中“损”的意思是",opts:["损失","极，表示程度很深","损害","减少"],ans:1,parse:"损：极、表示程度很深。句意：（菊花）凋零枯萎得厉害。"},
             {q:"“如今有谁堪摘”中“堪”的意思是",opts:["忍受","可以、能够","胜任"],ans:1,parse:"堪：可以、能够。句意：如今还有谁可以采摘呢？"},
             {q:"“这次第，怎一个愁字了得”中“次第”的意思是",opts:["等级","依次","光景、状况","次序、一个挨一个"],ans:2,parse:"次第：光景、状况。句意：这般光景，哪里是一个愁字能够概括得了的。"}
         ]
@@ -821,6 +868,18 @@ function formatTime(date){
     return `${y}-${m}-${d} ${h}:${mi}:${s}`;
 }
 
+// ===== 新增：获取荣誉称号 =====
+function getHonorTitle(rateNum, total){
+    // rateNum 为整数百分比（0~100），total为总题数（用于处理0题的特殊情况）
+    if(total === 0) return {text:"未作答", cls:"honor-luobang"};
+    if(rateNum === 100) return {text:"语皇大帝", cls:"honor-yao"};
+    if(rateNum >= 90) return {text:"文言宗师", cls:"honor-zongshi"};
+    if(rateNum >= 80) return {text:"饱学儒生", cls:"honor-rusheng"};
+    if(rateNum >= 70) return {text:"勤学书生", cls:"honor-shusheng"};
+    if(rateNum >= 60) return {text:"入门学子", cls:"honor-xuezi"};
+    return {text:"名落孙山", cls:"honor-luobang"};
+}
+
 function endPage(){
     clearTimeout(autoTimer);
     // 记录交卷时间
@@ -830,8 +889,14 @@ function endPage(){
     document.getElementById("ok").innerText = okCnt;
     document.getElementById("err").innerText = errCnt;
     const total = okCnt + errCnt;
-    const rate = total === 0 ? "0%" : Math.round(okCnt / total * 100) + "%";
+    const rateNum = total === 0 ? 0 : Math.round(okCnt / total * 100);
+    const rate = total === 0 ? "0%" : rateNum + "%";
     document.getElementById("rate").innerText = rate;
+
+    // 渲染荣誉称号
+    const honor = getHonorTitle(rateNum, total);
+    const honorWrap = document.getElementById("honorWrap");
+    honorWrap.innerHTML = `<div class="honor-title ${honor.cls}">🏅 荣誉称号：${honor.text}</div>`;
 
     if(isWrongBankMode){
         document.getElementById("endInfoName").innerText = `考生：${studentName}`;

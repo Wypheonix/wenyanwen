@@ -176,6 +176,49 @@
             content: "✎";
         }
 
+        /* 分组标题按钮 */
+        .group-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: clamp(18px, 4.8vw, 22px) clamp(18px, 5vw, 24px);
+            margin: 14px 0;
+            border: 1px solid #d9c4a4;
+            border-radius: var(--radius);
+            background: linear-gradient(145deg, #fdf6ea, #f5e8d2);
+            color: var(--accent-deep);
+            font-size: clamp(18px, 5vw, 22px);
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            cursor: pointer;
+            transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s;
+            font-family: inherit;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(92, 44, 24, 0.07);
+        }
+        .group-item::after {
+            content: "›";
+            font-size: 1.3em;
+            color: var(--gold);
+            opacity: 0.75;
+            transition: transform 0.25s;
+        }
+        .group-item:hover {
+            background: linear-gradient(145deg, #fff9ef, #efe0c8);
+            transform: translateY(-2px);
+            box-shadow: 0 9px 22px rgba(92, 44, 24, 0.13);
+            border-color: var(--gold);
+        }
+        .group-item:hover::after {
+            transform: translateX(4px);
+        }
+        .group-item:active {
+            transform: translateY(0) scale(0.99);
+        }
+
         /* 提示小字 */
         .hint-small {
             font-size: clamp(13px, 3.6vw, 15px);
@@ -285,6 +328,16 @@
         }
         .btn:active:not(:disabled) {
             transform: translateY(0);
+        }
+
+        /* 答题页按钮栏：手机端并排显示 */
+        #btn-wrap {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        #btn-wrap .btn {
+            margin: 8px 0;
         }
 
         /* 返回目录按钮 */
@@ -452,12 +505,28 @@
         @media (max-width: 480px) {
             body { padding-top: 16px; }
             .menu-item { padding: 15px 16px; }
+            .group-item { padding: 17px 18px; }
             .q-box { padding: 18px 15px; }
             .end-wrap { padding: 26px 16px; }
-            .btn { width: 100%; margin: 6px 0; }
+
+            /* 结束页按钮仍整行 */
             .end-wrap > div[style*="margin-top:30px"] .btn {
                 width: 100%;
                 margin: 7px 0;
+            }
+
+            /* 答题页按钮：上一题/下一题 并排显示 */
+            #btn-wrap {
+                display: flex;
+                gap: 10px;
+                flex-wrap: nowrap;
+            }
+            #btn-wrap .btn {
+                flex: 1 1 0;
+                width: auto;
+                margin: 8px 0;
+                padding: 12px 8px;
+                font-size: clamp(15px, 4.2vw, 16px);
             }
         }
 
@@ -468,19 +537,30 @@
         /* 触屏优化 */
         @media (hover: none) {
             .menu-item:hover { transform: none; box-shadow: 0 2px 8px rgba(92, 44, 24, 0.05); }
+            .group-item:hover { transform: none; box-shadow: 0 3px 10px rgba(92, 44, 24, 0.07); }
             .opt-item:hover { transform: none; background: #fffdf8; border-color: var(--line); }
             .btn:hover:not(:disabled) { transform: none; }
         }
     </style>
 </head>
 <body>
-    <!-- 目录页 -->
+    <!-- 目录页（分组入口） -->
     <div id="page-menu" class="page active">
         <h1 class="title">高中文言文实词自测</h1>
         <div class="name-input-wrap">
             <label for="stuName">姓名：</label>
             <input type="text" id="stuName" placeholder="请输入姓名" autocomplete="name">
         </div>
+        <button class="group-item" onclick="checkNameAndOpenGroup('bxsc')">必修上册</button>
+        <button class="group-item" onclick="checkNameAndOpenGroup('bxxc')">必修下册</button>
+        <button class="menu-item wrongbank" onclick="checkNameAndOpenWrongBank()">个人错题库专项练习</button>
+        <div class="hint-small">规则：错题连续答对3次自动移出错题库</div>
+    </div>
+
+    <!-- 必修上册篇目列表 -->
+    <div id="page-group-bxsc" class="page">
+        <button class="back-catalog-btn" onclick="backMenu()">← 返回目录</button>
+        <h1 class="title">必修上册</h1>
         <button class="menu-item" onclick="startQuiz('duangexing')">《短歌行》（15道）</button>
         <button class="menu-item" onclick="startQuiz('guiyuantian')">《归园田居（其一）》（12道）</button>
         <button class="menu-item" onclick="startQuiz('mengyoutian')">《梦游天姥吟留别》（15道）</button>
@@ -497,8 +577,13 @@
         <button class="menu-item" onclick="startQuiz('shejiangcaifurong')">《涉江采芙蓉》（4道）</button>
         <button class="menu-item" onclick="startQuiz('yumeiren')">《虞美人》（7道）</button>
         <button class="menu-item" onclick="startQuiz('queqiaoxian')">《鹊桥仙》（7道）</button>
-        <button class="menu-item wrongbank" onclick="openWrongBankCatalog()">个人错题库专项练习</button>
-        <div class="hint-small">规则：错题连续答对3次自动移出错题库</div>
+    </div>
+
+    <!-- 必修下册篇目列表 -->
+    <div id="page-group-bxxc" class="page">
+        <button class="back-catalog-btn" onclick="backMenu()">← 返回目录</button>
+        <h1 class="title">必修下册</h1>
+        <button class="menu-item" onclick="startQuiz('ziluzengxiranyou')">《子路、曾皙、冉有、公西华侍坐》（32道）</button>
     </div>
 
     <!-- 错题分类目录页 -->
@@ -891,9 +976,46 @@ const bank = {
             {q:"“忍顾鹊桥归路”中“忍”的意思是",opts:["狠心","怎忍、岂忍","愿意、舍得","克制、抑制"],ans:1,parse:"忍：怎忍、岂忍。句意：怎忍回头看那鹊桥归去的路。"},
             {q:"“忍顾鹊桥归路”中“顾”的意思是",opts:["只是、不过","顾虑","回头看","拜访"],ans:2,parse:"顾：回头看。句意：怎忍回头看那鹊桥归去的路。"}
         ]
+    },
+    ziluzengxiranyou: {
+        name:"《子路、曾皙、冉有、公西华侍坐》",
+        list:[
+            {q:"“子路、曾皙、冉有、公西华侍坐”中“侍坐”的意思是",opts:["陪侍长者闲坐","尊长坐着时站立侍奉"],ans:0,parse:"侍坐：陪侍长者闲坐。句意：子路、曾皙、冉有、公西华陪孔子闲坐。"},
+            {q:"“以吾一日长乎尔”中“以”的意思是",opts:["因为","用","认为","通“已”，停止"],ans:0,parse:"以：因为。句意：因为我年纪比你们大一点。"},
+            {q:"“居则曰：不吾知也”中“居”的意思是",opts:["存积","平日、平时","担任","处于"],ans:1,parse:"居：平日、平时。句意：你们平日就说：没有人了解我呀。"},
+            {q:"“如或知尔，则何以哉”中“如”的意思是",opts:["如果","或者","至于","去"],ans:0,parse:"如：如果。句意：如果有人了解你们，那么你们打算怎么做呢。"},
+            {q:"“方六七十，如五六十”中“如”的意思是",opts:["如果","或者","至于","去"],ans:1,parse:"如：或者。句意：一个方圆六七十里，或者五六十里的小国。"},
+            {q:"“如其礼乐，以俟君子”中“如”的意思是",opts:["如果","或者","至于","去"],ans:2,parse:"如：至于。句意：至于礼乐教化方面，那就等待君子来推行了。"},
+            {q:"“子路率尔而对曰”中“率”的意思是",opts:["榜样、表率","轻率、不加考虑","直率","带领"],ans:1,parse:"率：轻率、不加考虑。句意：子路轻率匆忙地回答说。"},
+            {q:"“摄乎大国之间”中“摄”的意思是",opts:["夹处、迫近","摄取","代理","收敛"],ans:0,parse:"摄：夹处、迫近。句意：夹在几个大国的中间。"},
+            {q:"“加之以师旅”中“师旅”的意思是",opts:["战争","众多属吏","军队，此指侵略的军队"],ans:2,parse:"师旅：军队，此指侵略的军队。句意：有军队来侵犯它。"},
+            {q:"“因之以饥馑”中“因”的意思是",opts:["趁机","接着、继而","凭借","于是"],ans:1,parse:"因：接着、继而。句意：接着国内又有饥荒。"},
+            {q:"“比及三年”中“比及”的意思是",opts:["与其","等到"],ans:1,parse:"比及：等到。句意：等到三年之后。"},
+            {q:"“可使有勇，且知方也”中“方”的意思是",opts:["正当","周围","模拟","合乎礼义的行事准则"],ans:3,parse:"方：合乎礼义的行事准则。句意：可以使百姓勇敢，并且懂得礼义准则。"},
+            {q:"“方六七十，如五六十”中“方”的意思是",opts:["方圆、纵横","方正、正直","将要","才"],ans:0,parse:"方：方圆、纵横。句意：国土方圆六七十里，或者五六十里。"},
+            {q:"“夫子哂之”中“哂”的意思是",opts:["大笑","微笑（含不以为然意）","嘲笑","沉默"],ans:1,parse:"哂：微笑（含不以为然意）。句意：孔子对他微微一笑。"},
+            {q:"“可使足民”中“足”的用法和意思是",opts:["富足","值得","使动用法，使……富足","动词，满足"],ans:2,parse:"足：使动用法，使……富足。句意：可以使百姓富足。"},
+            {q:"“以俟君子”中“俟”的意思是",opts:["等待","大","期待"],ans:0,parse:"俟：等待。句意：来等待有德有才的君子。"},
+            {q:"“如会同，端章甫”中“会同”的意思是",opts:["会合在一起","诸侯朝见天子的通称","会议","会面"],ans:1,parse:"会同：诸侯朝见天子的通称。句意：在诸侯会盟、朝见天子的时候。"},
+            {q:"“端章甫”中“端”“章甫”的用法是",opts:["名词，礼服和礼帽","名词作动词，穿礼服、戴礼帽"],ans:1,parse:"端、章甫：名词作动词，穿礼服、戴礼帽。句意：我穿着礼服，戴着礼帽。"},
+            {q:"“愿为小相焉”中“相”的意思是",opts:["互相","辅助","相貌","主持赞礼的司仪官"],ans:3,parse:"相：主持赞礼的司仪官。句意：愿意在那时做一个小小的司仪官。"},
+            {q:"“鼓瑟希，铿尔”中“希”的意思是",opts:["希望","通“稀”，稀疏、间歇","稀少","希求"],ans:1,parse:"希：通“稀”，稀疏、间歇。句意：弹瑟的声音渐渐稀疏，铿的一声。"},
+            {q:"“舍瑟而作”中“作”的意思是",opts:["创作","振作","产生、兴起","起身、站起来"],ans:3,parse:"作：起身、站起来。句意：放下瑟站起身来。"},
+            {q:"“异乎三子者之撰”中“撰”的意思是",opts:["才能、才干","著述","制造","持、拿着"],ans:0,parse:"撰：才能、才干。句意：和他们三个人的才能不一样。"},
+            {q:"“何伤乎？亦各言其志也”中“伤”的意思是",opts:["诋毁、中伤","受伤的人","悲伤","妨碍"],ans:3,parse:"伤：妨碍。句意：那有什么妨碍呢？也不过是各自说说自己的志向罢了。"},
+            {q:"“莫春者，春服既成”中“莫”的意思是",opts:["通“漠”，广大","没有谁","通“暮”，暮春","或许、大约、莫非"],ans:2,parse:"莫：通“暮”，暮春。句意：暮春时节，春天的衣服已经穿定了。"},
+            {q:"“冠者五六人”中“冠者”的意思是",opts:["戴帽子的人","成年人（古代男子二十行冠礼）"],ans:1,parse:"冠者：成年人（古代男子二十行冠礼）。句意：五六个成年人。"},
+            {q:"“风乎舞雩”中“风”的用法和意思是",opts:["礼节、习俗","名词作动词，吹风、乘凉","名词作状语，像风一样","通“讽”，讽刺"],ans:1,parse:"风：名词作动词，吹风、乘凉。句意：在舞雩台上吹风乘凉。"},
+            {q:"“咏而归”中“咏”的意思是",opts:["诗词","歌颂","唱歌","写作"],ans:2,parse:"咏：唱歌。句意：一路唱着歌回家。"},
+            {q:"“吾与点也”中“与”的意思是",opts:["赞成、同意","交往、交好","给予","参与"],ans:0,parse:"与：赞成、同意。句意：我赞同曾皙的想法啊。"},
+            {q:"“三子者出，曾皙后”中“后”的用法和意思是",opts:["名词，后面","名词作动词，落在后面","形容词，后面的","副词，后来"],ans:1,parse:"后：名词作动词，落在后面。句意：三个人都出去了，曾皙走在后面。"},
+            {q:"“其言不让”中“让”的意思是",opts:["通“攘”，推辞、推让、拒绝","谦让","责备","骚扰"],ans:1,parse:"让：谦让。句意：他说话毫不谦让。"},
+            {q:"“唯求则非邦也与”中“唯”的意思是",opts:["希望、祈使","应答声","虽然","句首语气词，无实义"],ans:3,parse:"唯：句首语气词，无实义。句意：难道冉求所说的就不是国家大事吗。"},
+            {q:"“赤也为之小，孰能为之大”中“小”“大”的用法是",opts:["形容词，小的、大的","名词，小事、大事","形容词作名词，小相、大相","动词，变小、变大"],ans:2,parse:"小、大：形容词作名词，小相、大相。句意：如果公西华只能做小相，那谁又能做大相呢。"}
+        ]
     }
 };
-const order = ["duangexing","guiyuantian","mengyoutian","denggao","pipaxing","niannujiaochibi","yongyulejingkou","shengshengman","quanxue","shishuo","dengtaishanji","jingnv","shejiangcaifurong","yumeiren","queqiaoxian"];
+const order = ["duangexing","guiyuantian","mengyoutian","denggao","pipaxing","niannujiaochibi","yongyulejingkou","shengshengman","quanxue","shishuo","dengtaishanji","jingnv","shejiangcaifurong","yumeiren","queqiaoxian","ziluzengxiranyou"];
 const letter = ["A","B","C","D"];
 let curKey = "";
 let curIdx = 0;
@@ -907,6 +1029,26 @@ let isWrongBankMode = false;
 let wrongBankQuestions = [];
 let currentWrongLessonKey = "";
 let finishTimeStr = "";
+
+// ===== 姓名校验 =====
+function checkNameAndOpenGroup(groupKey){
+    studentName = document.getElementById("stuName").value.trim();
+    if(!studentName){
+        alert("请先填写姓名！");
+        document.getElementById("stuName").focus();
+        return;
+    }
+    openGroup(groupKey);
+}
+function checkNameAndOpenWrongBank(){
+    studentName = document.getElementById("stuName").value.trim();
+    if(!studentName){
+        alert("请先填写姓名！");
+        document.getElementById("stuName").focus();
+        return;
+    }
+    openWrongBankCatalog();
+}
 
 // ===== 错题库本地存储工具 =====
 function getWrongBank(){
@@ -953,12 +1095,16 @@ function showPage(id){
     document.getElementById(id).classList.add("active");
 }
 
-function openWrongBankCatalog(){
-    studentName = document.getElementById("stuName").value.trim();
-    if(!studentName){
-        alert("请先填写姓名！");
-        return;
+// 打开分组页
+function openGroup(groupKey){
+    if(groupKey === 'bxsc'){
+        showPage("page-group-bxsc");
+    }else if(groupKey === 'bxxc'){
+        showPage("page-group-bxxc");
     }
+}
+
+function openWrongBankCatalog(){
     const group = getWrongBankGroup();
     const wrap = document.getElementById("wrongbank-catalog-list");
     wrap.innerHTML = "";

@@ -1147,8 +1147,8 @@ let finishTimeStr = "";
  *    admin.html 登录后可查看全部学生的成绩。
  * ============================================================ */
 const CONFIG = {
-    SUPABASE_URL: "https://vfbfmeezdcyrcogeyzzr.supabase.co",        // 例：https://abcdefghijk.supabase.co
-    SUPABASE_ANON_KEY: "sb_publishable_KDiAZPajOqn_NmMHONXrkQ_TWe9hL-N",   // 例：eyJhbGciOiJIUzI1NiIsInR5cCI6...
+    SUPABASE_URL: "https://vfbfmeezdcyrcogeyzzr.supabase.co",        // 例：https://abcdefghijk.supabase.co（Settings→Data API 或顶部 Connect 弹窗）
+    SUPABASE_ANON_KEY: "sb_publishable_KDiAZPajOqn_NmMHONXrkQ_TWe9hL-N",   // 填 Publishable key（sb_publishable_ 开头）或 anon key（eyJ 开头）均可
     CLASSES: []              // 班级候选，例：["高一(1)班","高一(2)班"]；留空则学生自由填写
 };
 const REPORT_TABLE = "attempts";
@@ -1158,6 +1158,8 @@ const LS_LOCAL      = "wenyanLocalRecords";   // 本地成绩（演示模式数�
 const LS_NAME       = "wenyanName";
 const LS_CLASS      = "wenyanClass";
 const LS_CLASS_HIST = "wenyanClassHistory";
+const LS_PROGRESS   = "wenyanProgress";       // 未做完的进度（断点续答）
+const PROGRESS_TTL  = 72 * 3600 * 1000;       // 进度最多保留 3 天
 
 let quizStartAt = 0;
 
@@ -1235,6 +1237,118 @@ function pushToCloud(rec){
         }
         return true;
     });
+}
+
+/** ===== 断点续答：把做题进度自动存到本机 ===== */
+function saveProgress(){
+    try{
+        if(isWrongBankMode){
+            if(!wrongBankQuestions.length) return;
+            localStorage.setItem(LS_PROGRESS, JSON.stringify({
+                v: 1, mode: "wrongbank", lessonKey: currentWrongLessonKey,
+                qids: wrongBankQuestions.map(function(w){ return [w.lessonKey, w.qIdx]; }),
+                curIdx: curIdx, answerRecord: answerRecord,
+                okCnt: okCnt, errCnt: errCnt, wrongList: wrongList,
+                startedAt: quizStartAt, savedAt: Date.now()
+            }));
+        }else{
+            if(!curKey) return;
+            localStorage.setItem(LS_PROGRESS, JSON.stringify({
+                v: 1, mode: "lesson", lessonKey: curKey,
+                curIdx: curIdx, answerRecord: answerRecord,
+                okCnt: okCnt, errCnt: errCnt, wrongList: wrongList,
+                startedAt: quizStartAt, savedAt: Date.now()
+            }));
+        }
+    }catch(e){}
+}
+
+function loadProgress(){
+    try{
+        const raw = localStorage.getItem(LS_PROGRESS);
+        if(!raw) return null;
+        const p = JSON.parse(raw);
+        if(!p || p.v !== 1) return null;
+        if(Date.now() - p.savedAt > PROGRESS_TTL){
+            localStorage.removeItem(LS_PROGRESS);
+            return null;
+        }
+        return p;
+    }catch(e){ return null; }
+}
+
+function clearProgress(){
+    try{ localStorage.removeItem(LS_PROGRESS); }catch(e){}
+}
+
+/** 恢复课文测试进度 */
+function resumeLesson(saved, key){
+    isWrongBankMode = false;
+    curKey = key;
+    const len = bank[key].list.length;
+    curIdx = Math.max(0, Math.min(saved.curIdx || 0, len - 1));
+    answerRecord = saved.answerRecord || {};
+    okCnt = saved.okCnt || 0;
+    errCnt = saved.errCnt || 0;
+    wrongList = saved.wrongList || [];
+    quizStartAt = saved.startedAt || Date.now();
+    clearTimeout(autoTimer);
+    document.getElementById("quiz-title").innerText = bank[curKey].name;
+    showQ();
+    showPage("page-quiz");
+}
+
+/** 恢复错题专项练习进度 */
+function resumeWrongBank(saved, lessonKey){
+    const qids = saved.qids || [];
+    const arr = [];
+    qids.forEach(function(pair){
+        const lk = pair[0], qi = pair[1];
+        if(bank[lk] && bank[lk].list[qi]){
+            arr.push({ qid: getQId(lk, qi), lessonKey: lk, qIdx: qi, qData: bank[lk].list[qi] });
+        }
+    });
+    if(!arr.length){ clearProgress(); return false; }
+
+    isWrongBankMode = true;
+    currentWrongLessonKey = lessonKey;
+    wrongBankQuestions = arr;
+    curIdx = Math.max(0, Math.min(saved.curIdx || 0, arr.length - 1));
+    answerRecord = saved.answerRecord || {};
+    okCnt = saved.okCnt || 0;
+    errCnt = saved.errCnt || 0;
+    wrongList = saved.wrongList || [];
+    quizStartAt = saved.startedAt || Date.now();
+    clearTimeout(autoTimer);
+    document.getElementById("quiz-title").innerText = `📖 ${bank[lessonKey].name} 错题练习`;
+    showQ();
+    showPage("page-quiz");
+    return true;
+}
+
+/** 结束页显示上报结果，让学生和老师都能看见 */
+function showReportStatus(mode){
+    let el = document.getElementById("reportStatus");
+    if(!el){
+        el = document.createElement("div");
+        el.id = "reportStatus";
+        el.style.cssText = "text-align:center;font-size:13px;line-height:1.6;margin-top:10px;padding:8px 14px;border-radius:10px;font-family:inherit;";
+        const anchor = document.getElementById("endTime");
+        if(anchor && anchor.parentNode) anchor.parentNode.insertBefore(el, anchor.nextSibling);
+    }
+    if(mode === "cloud"){
+        el.textContent = "☁ 成绩已上传，老师后台可查";
+        el.style.color = "#3e7d46";
+        el.style.background = "rgba(62,125,70,0.10)";
+    }else if(mode === "queued"){
+        el.textContent = "⚠ 网络不佳：成绩已暂存在本机，下次打开页面联网时自动补传";
+        el.style.color = "#b7791f";
+        el.style.background = "rgba(183,121,31,0.10)";
+    }else{
+        el.textContent = "📁 演示模式：成绩仅保存在本机浏览器（网页里的 Supabase 配置还没填）";
+        el.style.color = "#8a7663";
+        el.style.background = "rgba(138,118,99,0.10)";
+    }
 }
 
 /** 上报一条：先落本地，再尝试上云，失败进补传队列 */
@@ -1427,6 +1541,18 @@ function openWrongBankCatalog(){
 
 function startWrongLessonQuiz(lessonKey){
     studentName = document.getElementById("stuName").value.trim();
+
+    // 断点续答（错题练习同样支持）
+    const savedW = loadProgress();
+    if(savedW && savedW.mode === "wrongbank" && savedW.lessonKey === lessonKey){
+        const doneW = Object.keys(savedW.answerRecord || {}).length;
+        if(doneW > 0){
+            const goOnW = confirm("《" + bank[lessonKey].name + "》错题练习上次没做完（已答 " + doneW + " 题）。\n\n点「确定」= 继续上次进度\n点「取消」= 重新开始");
+            if(goOnW && resumeWrongBank(savedW, lessonKey)) return;
+            clearProgress();
+        }
+    }
+
     isWrongBankMode = true;
     currentWrongLessonKey = lessonKey;
     const group = getWrongBankGroup();
@@ -1455,6 +1581,18 @@ function startQuiz(key){
         return;
     }
     rememberStudent();
+
+    // 断点续答：发现同一篇有未完成的进度就问一句
+    const saved = loadProgress();
+    if(saved && saved.mode === "lesson" && saved.lessonKey === key){
+        const done = Object.keys(saved.answerRecord || {}).length;
+        if(done > 0){
+            const goOn = confirm("《" + bank[key].name + "》上次没做完（已答 " + done + "/" + bank[key].list.length + " 题）。\n\n点「确定」= 继续上次进度\n点「取消」= 重新开始");
+            if(goOn){ resumeLesson(saved, key); return; }
+            clearProgress();
+        }
+    }
+
     quizStartAt = Date.now();
     isWrongBankMode = false;
     curKey = key;
@@ -1541,6 +1679,7 @@ function goPrev(){
     if(curIdx > 0){
         curIdx--;
         showQ();
+        saveProgress();
     }
 }
 function goNext(){
@@ -1555,6 +1694,7 @@ function goNext(){
         endPage();
     }else{
         showQ();
+        saveProgress();
     }
 }
 
@@ -1602,6 +1742,7 @@ function selectAns(i){
     }
     opts.forEach(d=>d.classList.add("disabled-opt"));
     renderBtnBar();
+    saveProgress();   // 每答一题自动存进度
 }
 
 function formatTime(date){
@@ -1671,9 +1812,10 @@ function endPage(){
             wrong_qids: collectWrongQids()
         });
         quizStartAt = 0;
-        reportAttempt(rec);
+        reportAttempt(rec).then(function(r){ showReportStatus(r.mode); });
     }
 
+    clearProgress();   // 本次已完成，清掉断点
     showPage("page-end");
 }
 function backMenu(){

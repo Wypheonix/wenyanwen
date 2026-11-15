@@ -335,7 +335,17 @@
     .wq { display: inline-block; background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; margin: 2px 4px 2px 0; font-size: 12.5px; }
 
     .empty { padding: 48px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
-    .empty .big { font-size: 17px; color: var(--ink-soft); margin-bottom: 8px; font-family: "KaiTi", serif; letter-spacing: 0.1em; }
+    .notice {
+        background: #fdf4e3;
+        border: 1px solid #eddcbe;
+        color: #8a6a24;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-size: 13px;
+        line-height: 1.65;
+        margin-bottom: 10px;
+    }
+    .notice b { color: #7a5a18; }    .empty .big { font-size: 17px; color: var(--ink-soft); margin-bottom: 8px; font-family: "KaiTi", serif; letter-spacing: 0.1em; }
 
     .footnote { margin-top: 22px; font-size: 12.5px; color: var(--ink-faint); line-height: 1.8; }
     .footnote code { background: #f0e7d7; padding: 1px 6px; border-radius: 4px; font-size: 12px; }
@@ -459,21 +469,17 @@
         <!-- 明细 -->
         <div class="section">
             <div class="section-head">
-                <div class="section-title">交卷明细</div>
+                <div class="section-title" id="detailTitle">交卷明细</div>
+                <div class="seg" id="detailSeg">
+                    <button data-view="flow" class="on">交卷明细</button>
+                    <button data-view="student">按学生汇总</button>
+                </div>
                 <div class="section-note" id="updateNote"></div>
             </div>
+            <div class="notice hidden" id="truncNote"></div>
             <div class="table-card">
                 <table>
-                    <thead>
-                        <tr>
-                            <th style="width:112px;">交卷时间</th>
-                            <th style="width:120px;">姓名</th>
-                            <th style="width:96px;">班级</th>
-                            <th>篇目</th>
-                            <th style="width:150px;">得分</th>
-                            <th style="width:78px;">用时</th>
-                        </tr>
-                    </thead>
+                    <thead id="theadRow"></thead>
                     <tbody id="tbody"></tbody>
                 </table>
                 <div class="empty hidden" id="emptyBox">
@@ -496,8 +502,8 @@
  *  配置区 —— 必须与学生端 index.html 里的 CONFIG 保持一致
  * ============================================================ */
 const CONFIG = {
-    SUPABASE_URL: "https://vfbfmeezdcyrcogeyzzr.supabase.co",
-    SUPABASE_ANON_KEY: "sb_publishable_KDiAZPajOqn_NmMHONXrkQ_TWe9hL-N"
+    SUPABASE_URL: "https://vfbfmeezdcyrcogeyzzr.supabase.co",         // ← Project URL（Settings→Data API，或顶部 Connect 弹窗）
+    SUPABASE_ANON_KEY: "sb_publishable_KDiAZPajOqn_NmMHONXrkQ_TWe9hL-N"     // ← Publishable key（sb_publishable_ 开头）或 anon key（eyJ 开头）均可
 };
 
 /* 篇目清单（未做过的也会显示为 0，方便看"哪几课还没人做"） */
@@ -532,10 +538,12 @@ let view = [];            // 过滤后的记录
 let isDemo = false;
 let session = null;       // { access_token, refresh_token, expires_at }
 let filters = { range: "all", lesson: "", cls: "", kw: "" };
+let detailView = "flow";  // flow=交卷明细 / student=按学生汇总
 let autoOn = true;
 let autoTimer = null;
 let loading = false;
 let lastLoadAt = null;
+let rowsTotal = null;     // 数据库里符合时间条件的总条数（由 Content-Range 返回）
 
 /* ---------------- 小工具 ---------------- */
 const $ = function(id){ return document.getElementById(id); };
@@ -602,7 +610,14 @@ async function login(email, pwd){
     });
     const data = await res.json().catch(function(){ return {}; });
     if(!res.ok){
-        const msg = data.error_description || data.msg || data.error || ("登录失败 (" + res.status + ")");
+        let msg = data.error_description || data.msg || data.error || ("登录失败 (" + res.status + ")");
+        if(res.status === 404){
+            msg = "Project URL 填错了（服务器返回 404）——检查 CONFIG 里的 SUPABASE_URL：必须形如 https://xxxxxxxx.supabase.co，结尾不能带 /rest/v1 等任何后缀，也不能是 supabase.com/dashboard 开头的网页地址";
+        }else if(res.status === 400 && /invalid|credentials|login/i.test(msg)){
+            msg = "邮箱或密码不对（Invalid login credentials）";
+        }else if(res.status === 401){
+            msg = "密钥不对——检查 CONFIG 里的 SUPABASE_ANON_KEY 是否为 Publishable key（sb_publishable_ 开头）或 anon key（eyJ 开头）";
+        }
         throw new Error(msg);
     }
     saveSession({
@@ -650,29 +665,84 @@ async function fetchRows(){
         rows = lsRead(LS_LOCAL, []).slice().sort(function(a,b){
             return new Date(b.finished_at) - new Date(a.finished_at);
         });
+        rowsTotal = rows.length;
         return rows;
     }
+    // Supabase 服务端单次最多返回 1000 行，超过必须用 Range 头分页取全量
+    const PAGE_SIZE = 1000;
+    const HARD_CAP  = 20000;   // 防御性上限
     const token = await ensureToken();
-    let url = apiBase() + "/rest/v1/attempts?select=*&order=finished_at.desc&limit=2000";
+    const base = apiBase() + "/rest/v1/attempts" +
+        "?select=id,name,class_name,lesson_key,lesson_name,ok_count,err_count,total,rate,duration_sec,wrong_qids,finished_at,created_at" +
+        "&order=finished_at.desc";
+    const since = rangeStartISO();
+    if(since) base += "&finished_at=gte." + encodeURIComponent(since);
+
+    const baseHeaders = {
+        "apikey": CONFIG.SUPABASE_ANON_KEY,
+        "Authorization": "Bearer " + token,
+        "Prefer": "count=exact"   // 让服务端回报总条数
+    };
+
+    rows = [];
+    rowsTotal = null;
+    let offset = 0;
+    while(offset < HARD_CAP){
+        const res = await fetch(base, {
+            headers: Object.assign({}, baseHeaders, {
+                "Range": offset + "-" + (offset + PAGE_SIZE - 1)
+            })
+        });
+        if(res.status === 401){
+            clearSession();
+            throw new Error("登录已过期，请重新登录");
+        }
+        if(!res.ok){
+            const t = await res.text();
+            let msg = "读取失败 (" + res.status + ") " + t.slice(0, 120);
+            if(res.status === 404) msg = "读取失败 (404)——多半是 CONFIG 里 SUPABASE_URL 填错，检查是否形如 https://xxxxxxxx.supabase.co";
+            if(res.status === 401 || res.status === 403) msg = "读取失败 (" + res.status + ")——登录已过期或密钥不对，请退出重新登录；并确认 supabase.sql 已执行";
+            throw new Error(msg);
+        }
+        // Content-Range 形如 "1000-1999/3214"，斜杠后是总数
+        const cr = res.headers.get("Content-Range") || "";
+        const m = cr.match(/\/(\d+)\s*$/);
+        if(m) rowsTotal = Number(m[1]);
+
+        const page = await res.json();
+        if(!Array.isArray(page) || !page.length) break;
+        rows = rows.concat(page);
+        if(page.length < PAGE_SIZE) break;   // 不满一页 = 已经取完
+        offset += PAGE_SIZE;
+    }
+    return rows;
+}
+
+/** 自动刷新用：只取最新 1 行 + 总数，判断有没有新数据，没有就跳过全量加载 */
+async function probeChanged(){
+    const token = await ensureToken();
+    let url = apiBase() + "/rest/v1/attempts?select=finished_at&order=finished_at.desc&limit=1";
     const since = rangeStartISO();
     if(since) url += "&finished_at=gte." + encodeURIComponent(since);
-
     const res = await fetch(url, {
         headers: {
             "apikey": CONFIG.SUPABASE_ANON_KEY,
-            "Authorization": "Bearer " + token
+            "Authorization": "Bearer " + token,
+            "Prefer": "count=exact"
         }
     });
     if(res.status === 401){
         clearSession();
         throw new Error("登录已过期，请重新登录");
     }
-    if(!res.ok){
-        const t = await res.text();
-        throw new Error("读取失败 (" + res.status + ") " + t.slice(0, 120));
-    }
-    rows = await res.json();
-    return rows;
+    if(!res.ok) return true;   // 探测失败就老实全量刷
+    const cr = res.headers.get("Content-Range") || "";
+    const m = cr.match(/\/(\d+)\s*$/);
+    const total = m ? Number(m[1]) : null;
+    const list = await res.json();
+    const newestAt = list.length ? list[0].finished_at : null;
+    const knownNewest = rows.length ? rows[0].finished_at : null;
+    return total !== rows.length || newestAt !== knownNewest;
 }
 
 /* ---------------- 渲染 ---------------- */
@@ -752,7 +822,42 @@ function renderLessonGrid(){
     });
 }
 
-function renderTable(){
+const TABLE_HEADS = {
+    flow: [
+        { label: "交卷时间", w: "112px" },
+        { label: "姓名", w: "120px" },
+        { label: "班级", w: "96px" },
+        { label: "篇目" },
+        { label: "得分", w: "150px" },
+        { label: "用时", w: "78px" }
+    ],
+    student: [
+        { label: "姓名", w: "110px" },
+        { label: "班级", w: "96px" },
+        { label: "做题篇数", w: "92px" },
+        { label: "累计答题" },
+        { label: "总正确率", w: "96px" },
+        { label: "最近交卷", w: "110px" }
+    ]
+};
+
+function renderHead(){
+    const cols = TABLE_HEADS[detailView] || TABLE_HEADS.flow;
+    $("theadRow").innerHTML = "<tr>" + cols.map(function(c){
+        return '<th' + (c.w ? ' style="width:' + c.w + ';"' : "") + '>' + c.label + '</th>';
+    }).join("") + "</tr>";
+}
+
+function bindRowToggles(tb){
+    tb.querySelectorAll("tr[data-i], tr[data-si]").forEach(function(tr){
+        tr.addEventListener("click", function(){
+            const d = tr.nextElementSibling;
+            if(d && d.classList.contains("detail-row")) d.classList.toggle("hidden");
+        });
+    });
+}
+
+function renderFlowTable(){
     const tb = $("tbody");
     const empty = $("emptyBox");
 
@@ -795,12 +900,74 @@ function renderTable(){
             '</td></tr>';
     }).join("");
 
-    tb.querySelectorAll("tr[data-i]").forEach(function(tr){
-        tr.addEventListener("click", function(){
-            const d = tr.nextElementSibling;
-            if(d && d.classList.contains("detail-row")) d.classList.toggle("hidden");
-        });
+    bindRowToggles(tb);
+}
+
+function renderStudentTable(){
+    const tb = $("tbody");
+    const empty = $("emptyBox");
+
+    if(!view.length){
+        tb.innerHTML = "";
+        empty.classList.remove("hidden");
+        return;
+    }
+    empty.classList.add("hidden");
+
+    // 按姓名汇总（受当前筛选影响：切了篇目筛选，看到的就是该篇下每个学生的情况）
+    const map = {};
+    view.forEach(function(r){
+        const k = r.name || "未填写";
+        if(!map[k]) map[k] = { name: k, classes: {}, cnt: 0, total: 0, ok: 0, last: r.finished_at, subs: [] };
+        const g = map[k];
+        g.cnt++;
+        g.total += Number(r.total) || 0;
+        g.ok += Number(r.ok_count) || 0;
+        g.classes[r.class_name || "未分班"] = 1;
+        if(new Date(r.finished_at) > new Date(g.last)) g.last = r.finished_at;
+        g.subs.push(r);
     });
+
+    const list = Object.keys(map).map(function(k){ return map[k]; }).sort(function(a, b){
+        if(b.cnt !== a.cnt) return b.cnt - a.cnt;
+        return new Date(b.last) - new Date(a.last);
+    });
+
+    tb.innerHTML = list.map(function(g, i){
+        const rate = g.total ? Math.round(g.ok / g.total * 100) : 0;
+        const cls = Object.keys(g.classes).join("、");
+        const subs = g.subs.slice().sort(function(a, b){
+            return new Date(b.finished_at) - new Date(a.finished_at);
+        }).map(function(r){
+            const nm = String(r.lesson_name || "").replace(/[《》]/g, "");
+            return '<div style="margin:3px 0;">' + fmtTime(r.finished_at) +
+                ' · 《' + esc(nm) + '》· ' +
+                '<span class="score ' + rateClass(Number(r.rate) || 0) + '">' +
+                (r.ok_count || 0) + '/' + (r.total || 0) + ' · ' + (r.rate || 0) + '%</span> · ' +
+                fmtDur(r.duration_sec) + '</div>';
+        }).join("");
+        return '<tr data-si="' + i + '">' +
+            '<td class="cell-name nm-cell" data-label="姓名">' + esc(g.name) + '</td>' +
+            '<td data-label="班级"><span class="tag cls">' + esc(cls) + '</span></td>' +
+            '<td class="num" data-label="做题篇数">' + g.cnt + ' 篇</td>' +
+            '<td class="num" data-label="累计答题"><span class="score">' + g.ok + '/' + g.total +
+                '<span class="txt">题</span></span></td>' +
+            '<td class="num" data-label="总正确率"><span class="score ' + rateClass(rate) + '">' + rate + '%</span></td>' +
+            '<td class="time-cell" data-label="最近交卷">' + fmtTime(g.last) + '</td>' +
+            '</tr>' +
+            '<tr class="detail-row hidden"><td colspan="6">' +
+                '<div style="color:#8a7663;font-size:12px;margin-bottom:4px;">历次交卷（' + g.cnt + ' 次）：' +
+                (g.total ? ("累计答对 " + g.ok + " / " + g.total + " 题") : "") + '</div>' +
+                subs + '</td></tr>';
+    }).join("");
+
+    bindRowToggles(tb);
+}
+
+function renderTable(){
+    renderHead();
+    if(detailView === "student") renderStudentTable();
+    else renderFlowTable();
 }
 
 function renderFilters(){
@@ -825,14 +992,29 @@ function renderFilters(){
     cs.value = curC;
 }
 
+function renderTruncNote(){
+    const el = $("truncNote");
+    if(!el) return;
+    if(isDemo || rowsTotal == null || rowsTotal <= rows.length){
+        el.classList.add("hidden");
+        el.innerHTML = "";
+        return;
+    }
+    el.innerHTML = "数据库里共 <b>" + rowsTotal + "</b> 条记录，当前加载了 <b>" + rows.length +
+        "</b> 条（已达单次加载上限）。数据<b>没有被覆盖或删除</b>，仍在库中——用上方「时间范围」分段查看更早的记录，" +
+        "导出 CSV 也请分时间段导出。";
+    el.classList.remove("hidden");
+}
+
 function render(){
     applyFilters();
     renderFilters();
     renderStats();
     renderLessonGrid();
     renderTable();
+    renderTruncNote();
     if(lastLoadAt){
-        $("updateNote").textContent = "最后更新 " + fmtTime(lastLoadAt) + " · 共 " + rowCount() + " 条";
+        $("updateNote").textContent = "最后更新 " + fmtTime(lastLoadAt) + " · 当前显示 " + rows.length + " 条";
     }
 }
 function rowCount(){ return rows.length; }
@@ -843,6 +1025,13 @@ async function refresh(silent){
     loading = true;
     if(!silent) setStatus("loading", "读取中…");
     try{
+        if(silent && rows.length && !isDemo){
+            const changed = await probeChanged();
+            if(!changed){
+                setStatus("ok", "已连接");
+                return;   // 没有新数据，跳过全量加载
+            }
+        }
         await fetchRows();
         lastLoadAt = new Date().toISOString();
         render();
@@ -883,6 +1072,10 @@ function stopAuto(){
 /* ---------------- 导出 CSV ---------------- */
 function exportCsv(){
     if(!view.length){ alert("当前没有可导出的记录。"); return; }
+    if(!isDemo && rowsTotal != null && rowsTotal > rows.length){
+        if(!confirm("提醒：数据库共 " + rowsTotal + " 条记录，当前页面只加载了最近 " + rows.length +
+            " 条，导出的也只有这些。\n\n要导出更早的数据，请先用「今日 / 近 7 天」切换时间段分别导出。\n\n继续导出当前这批？")) return;
+    }
     const head = ["交卷时间", "姓名", "班级", "篇目", "答对", "答错", "总题数", "正确率(%)", "用时(秒)", "错题题号"];
     const lines = [head.join(",")];
     view.forEach(function(r){
@@ -979,6 +1172,14 @@ function showApp(){
     $("loginView").classList.add("hidden");
     $("appView").classList.remove("hidden");
     $("srcLabel").textContent = isDemo ? "本机 localStorage（演示）" : "Supabase 云端";
+    // 网址加 ?view=student 可直接打开「按学生汇总」视图
+    if(/[?&]view=student/.test(location.search)){
+        detailView = "student";
+        $("detailSeg").querySelectorAll("button").forEach(function(x){
+            x.classList.toggle("on", x.getAttribute("data-view") === "student");
+        });
+        $("detailTitle").textContent = "学生汇总";
+    }
     refresh();
     startAuto();
 }
@@ -1043,6 +1244,16 @@ function bind(){
 
     $("exportBtn").addEventListener("click", exportCsv);
     $("clearBtn").addEventListener("click", clearAll);
+
+    $("detailSeg").addEventListener("click", function(e){
+        const b = e.target.closest("button[data-view]");
+        if(!b) return;
+        this.querySelectorAll("button").forEach(function(x){ x.classList.remove("on"); });
+        b.classList.add("on");
+        detailView = b.getAttribute("data-view");
+        $("detailTitle").textContent = detailView === "student" ? "学生汇总" : "交卷明细";
+        render();
+    });
 
     $("rangeSeg").addEventListener("click", function(e){
         const b = e.target.closest("button[data-range]");
